@@ -1,6 +1,19 @@
-
-.idea/
+# Maven
 target/
 **/target/
+
+# IntelliJ
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/shelf/
 *.iml
-.ai/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
