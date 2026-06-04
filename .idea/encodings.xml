@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/innovatech-parent/businessdomain/equipos-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/businessdomain/proyectos-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/businessdomain/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/businessdomain/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/businessdomain/tareas-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/infraestructuredomain/api-gateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/infraestructuredomain/bff-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/infraestructuredomain/eureka-server/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/infraestructuredomain/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/infraestructuredomain/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/innovatech-parent/src/main/resources" charset="UTF-8" />
+  </component>
+</project>
