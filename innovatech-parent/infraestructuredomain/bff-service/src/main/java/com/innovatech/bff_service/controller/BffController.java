@@ -7,9 +7,11 @@ import com.innovatech.bff_service.dto.ProyectoResponseDTO;
 import com.innovatech.bff_service.dto.TareaResponseDTO;
 import com.innovatech.bff_service.facade.InnovatechBffFacade;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import java.util.List;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/v1/bff")
 public class BffController {
