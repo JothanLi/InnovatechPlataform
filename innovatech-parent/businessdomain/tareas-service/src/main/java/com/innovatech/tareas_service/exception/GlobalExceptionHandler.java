@@ -1,87 +1,104 @@
 package com.innovatech.tareas_service.exception;
 
-import lombok.extern.slf4j.Slf4j;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
-@Slf4j
 public class GlobalExceptionHandler {
 
-    /**
-     * Manejo de excepciones cuando una tarea no es encontrada
-     */
-    @ExceptionHandler(TareaNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleTareaNotFoundException(
-            TareaNotFoundException ex,
-            WebRequest request) {
-        log.error("Error: Tarea no encontrada - {}", ex.getMessage());
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> manejarRecursoNoEncontrado(
+            RecursoNoEncontradoException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.NOT_FOUND.value())
-                .error("Tarea No Encontrada")
+                .error("Recurso no encontrado")
                 .mensaje(ex.getMessage())
-                .ruta(request.getDescription(false).replace("uri=", ""))
+                .path(request.getRequestURI())
                 .build();
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
-    /**
-     * Manejo de excepciones de validación
-     */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorValidationResponse> handleValidationExceptions(
-            MethodArgumentNotValidException ex,
-            WebRequest request) {
-        log.error("Error de validación: {}", ex.getMessage());
-
-        Map<String, String> errores = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String nombreCampo = ((FieldError) error).getField();
-            String mensajeError = error.getDefaultMessage();
-            errores.put(nombreCampo, mensajeError);
-        });
-
-        ErrorValidationResponse errorResponse = ErrorValidationResponse.builder()
+    @ExceptionHandler(ReglaNegocioException.class)
+    public ResponseEntity<ErrorResponse> manejarReglaNegocio(
+            ReglaNegocioException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
-                .error("Error de Validación")
-                .mensaje("Errores en los campos enviados")
-                .errores(errores)
-                .ruta(request.getDescription(false).replace("uri=", ""))
+                .error("Regla de negocio inválida")
+                .mensaje(ex.getMessage())
+                .path(request.getRequestURI())
                 .build();
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
-    /**
-     * Manejo de excepciones genéricas
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobalException(
-            Exception ex,
-            WebRequest request) {
-        log.error("Error interno del servidor: {}", ex.getMessage(), ex);
-
-        ErrorResponse errorResponse = ErrorResponse.builder()
+    @ExceptionHandler(ServicioExternoException.class)
+    public ResponseEntity<ErrorResponse> manejarServicioExterno(
+            ServicioExternoException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Error Interno del Servidor")
-                .mensaje("Ocurrió un error inesperado")
-                .ruta(request.getDescription(false).replace("uri=", ""))
+                .status(HttpStatus.BAD_GATEWAY.value())
+                .error("Error de comunicación entre microservicios")
+                .mensaje(ex.getMessage())
+                .path(request.getRequestURI())
                 .build();
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(error);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> manejarValidaciones(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request
+    ) {
+        Map<String, String> validaciones = new HashMap<>();
+
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            validaciones.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Error de validación")
+                .mensaje("Existen campos inválidos en la solicitud")
+                .path(request.getRequestURI())
+                .validaciones(validaciones)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> manejarErrorGeneral(
+            Exception ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error("Error interno del servidor")
+                .mensaje(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
