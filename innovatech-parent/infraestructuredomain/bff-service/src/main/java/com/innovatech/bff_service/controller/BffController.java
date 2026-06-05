@@ -2,16 +2,15 @@ package com.innovatech.bff_service.controller;
 
 import com.innovatech.bff_service.dto.AsignacionProyectoResponse;
 import com.innovatech.bff_service.dto.AvanceProyectoResponse;
+import com.innovatech.bff_service.dto.DashboardResumenResponse;
 import com.innovatech.bff_service.dto.ProyectoDetalleResponse;
 import com.innovatech.bff_service.dto.ProyectoResponseDTO;
 import com.innovatech.bff_service.dto.TareaResponseDTO;
 import com.innovatech.bff_service.facade.InnovatechBffFacade;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.CrossOrigin;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/v1/bff")
 public class BffController {
@@ -20,6 +19,11 @@ public class BffController {
 
     public BffController(InnovatechBffFacade bffFacade) {
         this.bffFacade = bffFacade;
+    }
+
+    @GetMapping("/dashboard/resumen")
+    public DashboardResumenResponse obtenerDashboardResumen() {
+        return bffFacade.obtenerDashboardResumen();
     }
 
     @GetMapping("/proyectos")
