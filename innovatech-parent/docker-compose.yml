@@ -64,6 +64,7 @@ services:
       DB_URL: "jdbc:mysql://innovatech-mysql:3306/innovatech_proyectos?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
       DB_USERNAME: "root"
       DB_PASSWORD: "root"
+      TAREAS_SERVICE_URL: "http://tareas-service:8084"
       JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
     depends_on:
       mysql:
@@ -163,7 +164,12 @@ services:
       TAREAS_SERVICE_URL: "http://tareas-service:8084"
       EQUIPOS_SERVICE_URL: "http://equipos-service:8083"
       BFF_SERVICE_URL: "http://bff-service:8085"
+
       JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+      INNOVATECH_SECURITY_JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+      INNOVATECH_SECURITY_JWT_EXPIRATION_MS: "86400000"
+      INNOVATECH_SECURITY_JWT_EXPIRATION_MINUTES: "1440"
+      INNOVATECH_SECURITY_CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
     depends_on:
       - eureka-server
       - proyectos-service

@@ -4,64 +4,65 @@ import com.innovatech.api_gateway.dto.LoginRequest;
 import com.innovatech.api_gateway.dto.LoginResponse;
 import com.innovatech.api_gateway.dto.MiembroAuthResponse;
 import com.innovatech.api_gateway.security.JwtService;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AuthFacade {
 
-    private static final String ESTADO_ACTIVO = "ACTIVO";
-
+    private final JwtService jwtService;
     private final RestClient equiposRestClient;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-
-    public AuthFacade(
-            RestClient equiposRestClient,
-            PasswordEncoder passwordEncoder,
-            JwtService jwtService
-    ) {
-        this.equiposRestClient = equiposRestClient;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
-    }
 
     public LoginResponse login(LoginRequest request) {
-        MiembroAuthResponse miembro = buscarMiembroPorEmail(request.username());
+        String email = request.getUsername();
+        String password = request.getPassword();
 
-        if (!ESTADO_ACTIVO.equals(miembro.estado())) {
-            throw new DisabledException("El usuario se encuentra inactivo");
+        if (email == null || email.isBlank() || password == null || password.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email y contraseña son obligatorios");
         }
 
-        if (!passwordEncoder.matches(request.password(), miembro.passwordHash())) {
-            throw new BadCredentialsException("Credenciales inválidas");
+        MiembroAuthResponse miembro;
+
+        try {
+            miembro = equiposRestClient
+                    .get()
+                    .uri("/api/v1/equipos/miembros/auth/{email}", email)
+                    .retrieve()
+                    .body(MiembroAuthResponse.class);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+
+        if (miembro == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        }
+
+        if (!"ACTIVO".equalsIgnoreCase(miembro.estado())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuario inactivo");
+        }
+
+        if (!passwordEncoder.matches(password, miembro.passwordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
 
         List<String> roles = List.of(miembro.rol());
 
+        String token = jwtService.generateToken(miembro.email(), roles);
+
         return new LoginResponse(
                 "Bearer",
-                jwtService.generateToken(miembro.email(), roles),
-                jwtService.getExpirationSeconds(),
+                token,
+                86400,
                 miembro.email(),
                 roles
         );
-    }
-
-    private MiembroAuthResponse buscarMiembroPorEmail(String email) {
-        try {
-            return equiposRestClient.get()
-                    .uri("/api/v1/equipos/miembros/auth/{email}", email)
-                    .retrieve()
-                    .body(MiembroAuthResponse.class);
-        } catch (RestClientResponseException exception) {
-            throw new BadCredentialsException("Credenciales inválidas", exception);
-        }
     }
 }
