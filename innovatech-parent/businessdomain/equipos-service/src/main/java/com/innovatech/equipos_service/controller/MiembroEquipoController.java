@@ -1,5 +1,6 @@
 package com.innovatech.equipos_service.controller;
 
+import com.innovatech.equipos_service.dto.MiembroAuthResponse;
 import com.innovatech.equipos_service.dto.MiembroEquipoRequest;
 import com.innovatech.equipos_service.dto.MiembroEquipoResponse;
 import com.innovatech.equipos_service.service.MiembroEquipoService;
@@ -25,6 +26,11 @@ public class MiembroEquipoController {
     @GetMapping("/{id}")
     public MiembroEquipoResponse obtenerMiembroPorId(@PathVariable Long id) {
         return miembroEquipoService.obtenerMiembroPorId(id);
+    }
+
+    @GetMapping("/auth/{email}")
+    public MiembroAuthResponse obtenerMiembroAuthPorEmail(@PathVariable String email) {
+        return miembroEquipoService.obtenerMiembroAuthPorEmail(email);
     }
 
     @PostMapping

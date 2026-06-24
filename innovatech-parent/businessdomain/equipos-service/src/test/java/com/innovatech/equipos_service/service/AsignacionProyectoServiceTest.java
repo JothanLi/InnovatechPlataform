@@ -45,9 +45,11 @@ class AsignacionProyectoServiceTest {
 
         MiembroEquipo miembro = MiembroEquipo.builder()
                 .id(10L)
-                .nombre("Sebastian")
-                .apellido("Mariqueo")
+                .nombres("Sebastian")
+                .apellidoPaterno("Mariqueo")
+                .apellidoMaterno("Perez")
                 .email("sebastian.mariqueo@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.DEVELOPER)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -77,7 +79,7 @@ class AsignacionProyectoServiceTest {
         assertEquals(1L, response.idProyecto());
         assertEquals("Plataforma Innovatech", response.nombreProyecto());
         assertEquals(10L, response.idMiembro());
-        assertEquals("Sebastian Mariqueo", response.nombreMiembro());
+        assertEquals("Sebastian Mariqueo Perez", response.nombreMiembro());
         assertEquals("DEVELOPER", response.rolMiembro());
 
         verify(miembroEquipoService).buscarEntidadPorId(10L);
@@ -92,9 +94,11 @@ class AsignacionProyectoServiceTest {
 
         MiembroEquipo miembroInactivo = MiembroEquipo.builder()
                 .id(10L)
-                .nombre("Sebastian")
-                .apellido("Mariqueo")
+                .nombres("Sebastian")
+                .apellidoPaterno("Mariqueo")
+                .apellidoMaterno("Perez")
                 .email("sebastian.mariqueo@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.DEVELOPER)
                 .estado(EstadoMiembro.INACTIVO)
                 .build();
@@ -119,9 +123,11 @@ class AsignacionProyectoServiceTest {
 
         MiembroEquipo miembro = MiembroEquipo.builder()
                 .id(10L)
-                .nombre("Camila")
-                .apellido("Torres")
+                .nombres("Camila")
+                .apellidoPaterno("Torres")
+                .apellidoMaterno("Rojas")
                 .email("camila.torres@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.PROJECT_MANAGER)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -152,9 +158,11 @@ class AsignacionProyectoServiceTest {
 
         MiembroEquipo miembro = MiembroEquipo.builder()
                 .id(10L)
-                .nombre("Jorge")
-                .apellido("Salazar")
+                .nombres("Jorge")
+                .apellidoPaterno("Salazar")
+                .apellidoMaterno("Parra")
                 .email("jorge.salazar@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.QA)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -180,7 +188,7 @@ class AsignacionProyectoServiceTest {
         assertEquals(1, response.size());
         assertEquals(100L, response.get(0).id());
         assertEquals("Plataforma Innovatech", response.get(0).nombreProyecto());
-        assertEquals("Jorge Salazar", response.get(0).nombreMiembro());
+        assertEquals("Jorge Salazar Parra", response.get(0).nombreMiembro());
         assertEquals("QA", response.get(0).rolMiembro());
 
         verify(proyectoServiceAdapter).obtenerProyectoAdaptado(idProyecto);

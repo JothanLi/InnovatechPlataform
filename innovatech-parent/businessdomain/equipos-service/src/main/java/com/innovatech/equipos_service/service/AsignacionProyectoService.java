@@ -6,6 +6,7 @@ import com.innovatech.equipos_service.dto.AsignacionProyectoResponse;
 import com.innovatech.equipos_service.dto.ProyectoAdaptadoResponse;
 import com.innovatech.equipos_service.exception.RecursoNoEncontradoException;
 import com.innovatech.equipos_service.exception.ReglaNegocioException;
+import com.innovatech.equipos_service.factory.AsignacionProyectoFactory;
 import com.innovatech.equipos_service.model.AsignacionProyecto;
 import com.innovatech.equipos_service.model.EstadoMiembro;
 import com.innovatech.equipos_service.model.MiembroEquipo;
@@ -13,7 +14,6 @@ import com.innovatech.equipos_service.repository.AsignacionProyectoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -42,11 +42,7 @@ public class AsignacionProyectoService {
             throw new ReglaNegocioException("El miembro ya se encuentra asignado a este proyecto");
         }
 
-        AsignacionProyecto asignacion = AsignacionProyecto.builder()
-                .idProyecto(request.idProyecto())
-                .miembro(miembro)
-                .fechaAsignacion(LocalDate.now())
-                .build();
+        AsignacionProyecto asignacion = AsignacionProyectoFactory.crear(request.idProyecto(), miembro);
 
         AsignacionProyecto guardada = asignacionProyectoRepository.save(asignacion);
 
@@ -75,16 +71,6 @@ public class AsignacionProyectoService {
             AsignacionProyecto asignacion,
             ProyectoAdaptadoResponse proyecto
     ) {
-        MiembroEquipo miembro = asignacion.getMiembro();
-
-        return new AsignacionProyectoResponse(
-                asignacion.getId(),
-                asignacion.getIdProyecto(),
-                proyecto.nombreProyecto(),
-                miembro.getId(),
-                miembro.getNombre() + " " + miembro.getApellido(),
-                miembro.getRol().name(),
-                asignacion.getFechaAsignacion()
-        );
+        return AsignacionProyectoFactory.crearResponse(asignacion, proyecto);
     }
 }

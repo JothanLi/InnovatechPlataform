@@ -6,6 +6,5 @@ public enum RolEquipo {
     DEVELOPER,
     QA,
     DEVOPS,
-    UI_UX,
-    VIEWER
+    UI_UX
 }

@@ -6,6 +6,7 @@ import com.innovatech.tareas_service.dto.TareaRequestDTO;
 import com.innovatech.tareas_service.dto.TareaResponseDTO;
 import com.innovatech.tareas_service.exception.RecursoNoEncontradoException;
 import com.innovatech.tareas_service.exception.ReglaNegocioException;
+import com.innovatech.tareas_service.factory.TareaFactory;
 import com.innovatech.tareas_service.model.EstadoTarea;
 import com.innovatech.tareas_service.model.Tarea;
 import com.innovatech.tareas_service.repository.TareaRepository;
@@ -26,14 +27,7 @@ public class TareaService {
 
         validarFechas(request);
 
-        Tarea tarea = Tarea.builder()
-                .descripcion(request.getDescripcion())
-                .estado(request.getEstado())
-                .idProyecto(request.getIdProyecto())
-                .responsable(request.getResponsable())
-                .fechaInicio(request.getFechaInicio())
-                .fechaFinEstimada(request.getFechaFinEstimada())
-                .build();
+        Tarea tarea = TareaFactory.crearDesdeRequest(request);
 
         Tarea tareaGuardada = tareaRepository.save(tarea);
 
@@ -140,15 +134,6 @@ public class TareaService {
     }
 
     private TareaResponseDTO convertirAResponse(Tarea tarea, String nombreProyecto) {
-        return TareaResponseDTO.builder()
-                .id(tarea.getId())
-                .descripcion(tarea.getDescripcion())
-                .estado(tarea.getEstado())
-                .idProyecto(tarea.getIdProyecto())
-                .nombreProyecto(nombreProyecto)
-                .responsable(tarea.getResponsable())
-                .fechaInicio(tarea.getFechaInicio())
-                .fechaFinEstimada(tarea.getFechaFinEstimada())
-                .build();
+        return TareaFactory.crearResponse(tarea, nombreProyecto);
     }
 }
