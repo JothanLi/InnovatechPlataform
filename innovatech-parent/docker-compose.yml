@@ -4,8 +4,8 @@ services:
     container_name: innovatech-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: innovatech_proyectos
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_DATABASE: "innovatech_proyectos"
     ports:
       - "3307:3306"
     volumes:
@@ -43,7 +43,7 @@ services:
     ports:
       - "9090:9090"
     environment:
-      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
     depends_on:
       - eureka-server
     networks:
@@ -64,6 +64,7 @@ services:
       DB_URL: "jdbc:mysql://innovatech-mysql:3306/innovatech_proyectos?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
       DB_USERNAME: "root"
       DB_PASSWORD: "root"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
     depends_on:
       mysql:
         condition: service_healthy
@@ -87,6 +88,7 @@ services:
       DB_URL: "jdbc:mysql://innovatech-mysql:3306/innovatech_equipos?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
       DB_USERNAME: "root"
       DB_PASSWORD: "root"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
     depends_on:
       mysql:
         condition: service_healthy
@@ -111,6 +113,7 @@ services:
       DB_USERNAME: "root"
       DB_PASSWORD: "root"
       PROYECTOS_SERVICE_URL: "http://proyectos-service:8081"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
     depends_on:
       mysql:
         condition: service_healthy
@@ -132,10 +135,10 @@ services:
     ports:
       - "8085:8085"
     environment:
-      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
-      PROYECTOS_SERVICE_URL: http://proyectos-service:8081
-      TAREAS_SERVICE_URL: http://tareas-service:8084
-      EQUIPOS_SERVICE_URL: http://equipos-service:8083
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      PROYECTOS_SERVICE_URL: "http://proyectos-service:8081"
+      TAREAS_SERVICE_URL: "http://tareas-service:8084"
+      EQUIPOS_SERVICE_URL: "http://equipos-service:8083"
     depends_on:
       - eureka-server
       - proyectos-service
@@ -155,11 +158,12 @@ services:
     ports:
       - "8090:8090"
     environment:
-      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
-      PROYECTOS_SERVICE_URL: http://proyectos-service:8081
-      TAREAS_SERVICE_URL: http://tareas-service:8084
-      EQUIPOS_SERVICE_URL: http://equipos-service:8083
-      BFF_SERVICE_URL: http://bff-service:8085
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      PROYECTOS_SERVICE_URL: "http://proyectos-service:8081"
+      TAREAS_SERVICE_URL: "http://tareas-service:8084"
+      EQUIPOS_SERVICE_URL: "http://equipos-service:8083"
+      BFF_SERVICE_URL: "http://bff-service:8085"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
     depends_on:
       - eureka-server
       - proyectos-service
@@ -178,7 +182,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_BFF_API_URL: http://localhost:8090/api/v1/bff
+      VITE_BFF_API_URL: "http://localhost:8090/api/v1/bff"
     depends_on:
       - api-gateway
     networks:
