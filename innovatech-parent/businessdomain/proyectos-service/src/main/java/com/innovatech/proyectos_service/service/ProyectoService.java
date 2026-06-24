@@ -4,6 +4,8 @@ import com.innovatech.proyectos_service.dto.ProyectoRequestDTO;
 import com.innovatech.proyectos_service.dto.ProyectoResponseDTO;
 import com.innovatech.proyectos_service.exception.RecursoNoEncontradoException;
 import com.innovatech.proyectos_service.exception.ReglaNegocioException;
+import com.innovatech.proyectos_service.factory.ProyectoFactory;
+import com.innovatech.proyectos_service.facade.TareaServiceFacade;
 import com.innovatech.proyectos_service.model.EstadoProyecto;
 import com.innovatech.proyectos_service.model.Proyecto;
 import com.innovatech.proyectos_service.repository.ProyectoRepository;
@@ -17,17 +19,12 @@ import java.util.List;
 public class ProyectoService {
 
     private final ProyectoRepository proyectoRepository;
+    private final TareaServiceFacade tareaServiceFacade;
 
     public ProyectoResponseDTO crearProyecto(ProyectoRequestDTO request) {
         validarNombreDuplicado(request.getNombre());
 
-        Proyecto proyecto = Proyecto.builder()
-                .nombre(request.getNombre())
-                .descripcion(request.getDescripcion())
-                .estado(request.getEstado())
-                .fechaInicio(request.getFechaInicio())
-                .fechaFinEstimada(request.getFechaFinEstimada())
-                .build();
+        Proyecto proyecto = ProyectoFactory.crearDesdeRequest(request);
 
         Proyecto proyectoGuardado = proyectoRepository.save(proyecto);
 
@@ -110,21 +107,10 @@ public class ProyectoService {
     }
 
     private boolean existenTareasPendientes(Long idProyecto) {
-        /*
-         * Más adelante esta validación se conectará con tareas-service usando OpenFeign.
-         * Por ahora retorna false para permitir probar el CRUD de proyectos.
-         */
-        return false;
+        return tareaServiceFacade.existenTareasPendientes(idProyecto);
     }
 
     private ProyectoResponseDTO convertirAResponse(Proyecto proyecto) {
-        return ProyectoResponseDTO.builder()
-                .id(proyecto.getId())
-                .nombre(proyecto.getNombre())
-                .descripcion(proyecto.getDescripcion())
-                .estado(proyecto.getEstado())
-                .fechaInicio(proyecto.getFechaInicio())
-                .fechaFinEstimada(proyecto.getFechaFinEstimada())
-                .build();
+        return ProyectoFactory.crearResponse(proyecto);
     }
 }

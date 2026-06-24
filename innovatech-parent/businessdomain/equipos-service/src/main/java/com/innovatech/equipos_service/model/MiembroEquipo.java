@@ -16,14 +16,20 @@ public class MiembroEquipo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String nombre;
+    @Column(name = "nombre", nullable = false)
+    private String nombres;
 
-    @Column(nullable = false)
-    private String apellido;
+    @Column(name = "apellido", nullable = false)
+    private String apellidoPaterno;
+
+    @Column(name = "apellido_materno", nullable = false)
+    private String apellidoMaterno;
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

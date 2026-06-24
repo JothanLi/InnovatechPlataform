@@ -64,7 +64,7 @@ class ProyectoControllerTest {
 
         when(proyectoService.crearProyecto(any(ProyectoRequestDTO.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/proyectos")
+        mockMvc.perform(post("/api/v1/proyectos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -81,7 +81,7 @@ class ProyectoControllerTest {
                 .estado(null)
                 .build();
 
-        mockMvc.perform(post("/api/proyectos")
+        mockMvc.perform(post("/api/v1/proyectos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -109,7 +109,7 @@ class ProyectoControllerTest {
 
         when(proyectoService.listarProyectos()).thenReturn(List.of(proyecto1, proyecto2));
 
-        mockMvc.perform(get("/api/proyectos"))
+        mockMvc.perform(get("/api/v1/proyectos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].nombre").value("Proyecto 1"))
@@ -127,7 +127,7 @@ class ProyectoControllerTest {
 
         when(proyectoService.buscarPorId(1L)).thenReturn(response);
 
-        mockMvc.perform(get("/api/proyectos/1"))
+        mockMvc.perform(get("/api/v1/proyectos/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.nombre").value("Proyecto Innovatech"))
@@ -139,7 +139,7 @@ class ProyectoControllerTest {
         when(proyectoService.buscarPorId(99L))
                 .thenThrow(new RecursoNoEncontradoException("No existe un proyecto con ID: 99"));
 
-        mockMvc.perform(get("/api/proyectos/99"))
+        mockMvc.perform(get("/api/v1/proyectos/99"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Recurso no encontrado"))
                 .andExpect(jsonPath("$.mensaje").value("No existe un proyecto con ID: 99"));
@@ -156,7 +156,7 @@ class ProyectoControllerTest {
 
         when(proyectoService.buscarPorEstado(EstadoProyecto.PLANNED)).thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/proyectos/estado/PLANNED"))
+        mockMvc.perform(get("/api/v1/proyectos/estado/PLANNED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].estado").value("PLANNED"));
@@ -183,7 +183,7 @@ class ProyectoControllerTest {
 
         when(proyectoService.actualizarProyecto(eq(1L), any(ProyectoRequestDTO.class))).thenReturn(response);
 
-        mockMvc.perform(put("/api/proyectos/1")
+        mockMvc.perform(put("/api/v1/proyectos/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -207,7 +207,7 @@ class ProyectoControllerTest {
 
         when(proyectoService.cambiarEstado(1L, EstadoProyecto.COMPLETED)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/proyectos/1/estado")
+        mockMvc.perform(patch("/api/v1/proyectos/1/estado")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -223,7 +223,7 @@ class ProyectoControllerTest {
         when(proyectoService.cambiarEstado(1L, EstadoProyecto.IN_PROGRESS))
                 .thenThrow(new ReglaNegocioException("No se puede cambiar el estado de un proyecto cancelado"));
 
-        mockMvc.perform(patch("/api/proyectos/1/estado")
+        mockMvc.perform(patch("/api/v1/proyectos/1/estado")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -235,7 +235,7 @@ class ProyectoControllerTest {
     void eliminarProyecto_deberiaRetornar204() throws Exception {
         doNothing().when(proyectoService).eliminarProyecto(1L);
 
-        mockMvc.perform(delete("/api/proyectos/1"))
+        mockMvc.perform(delete("/api/v1/proyectos/1"))
                 .andExpect(status().isNoContent());
     }
 }

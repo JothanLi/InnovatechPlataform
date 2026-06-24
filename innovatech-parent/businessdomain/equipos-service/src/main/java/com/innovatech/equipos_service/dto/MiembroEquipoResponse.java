@@ -5,8 +5,9 @@ import com.innovatech.equipos_service.model.RolEquipo;
 
 public record MiembroEquipoResponse(
         Long id,
-        String nombre,
-        String apellido,
+        String nombres,
+        String apellidoPaterno,
+        String apellidoMaterno,
         String email,
         RolEquipo rol,
         EstadoMiembro estado

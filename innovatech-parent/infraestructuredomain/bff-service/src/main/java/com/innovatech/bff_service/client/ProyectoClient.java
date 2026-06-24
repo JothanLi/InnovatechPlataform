@@ -1,8 +1,11 @@
 package com.innovatech.bff_service.client;
 
 import com.innovatech.bff_service.dto.ProyectoResponseDTO;
+import com.innovatech.bff_service.dto.ProyectoRequestDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
@@ -18,4 +21,7 @@ public interface ProyectoClient {
 
     @GetMapping("/api/v1/proyectos/{id}")
     ProyectoResponseDTO obtenerProyectoPorId(@PathVariable("id") Long id);
+
+    @PostMapping("/api/v1/proyectos")
+    ProyectoResponseDTO crearProyecto(@RequestBody ProyectoRequestDTO request);
 }

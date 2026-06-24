@@ -11,8 +11,10 @@ import com.innovatech.equipos_service.repository.MiembroEquipoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Optional;
 
@@ -33,15 +35,19 @@ class MiembroEquipoServiceTest {
         MiembroEquipoRequest request = new MiembroEquipoRequest(
                 "Sebastian",
                 "Mariqueo",
+                "Perez",
                 "sebastian.mariqueo@innovatech.cl",
-                RolEquipo.DEVELOPER
+                RolEquipo.DEVELOPER,
+                "Sebastian123"
         );
 
         MiembroEquipo miembroGuardado = MiembroEquipo.builder()
                 .id(1L)
-                .nombre("Sebastian")
-                .apellido("Mariqueo")
+                .nombres("Sebastian")
+                .apellidoPaterno("Mariqueo")
+                .apellidoMaterno("Perez")
                 .email("sebastian.mariqueo@innovatech.cl")
+                .passwordHash("$2a$12$abcdefghijklmnopqrstuvwxyzabcdefghiJ1gV4SoXLbAAaYlE.Bj5lLvvvC")
                 .rol(RolEquipo.DEVELOPER)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -53,14 +59,18 @@ class MiembroEquipoServiceTest {
 
         assertNotNull(response);
         assertEquals(1L, response.id());
-        assertEquals("Sebastian", response.nombre());
-        assertEquals("Mariqueo", response.apellido());
+        assertEquals("Sebastian", response.nombres());
+        assertEquals("Mariqueo", response.apellidoPaterno());
+        assertEquals("Perez", response.apellidoMaterno());
         assertEquals("sebastian.mariqueo@innovatech.cl", response.email());
         assertEquals(RolEquipo.DEVELOPER, response.rol());
         assertEquals(EstadoMiembro.ACTIVO, response.estado());
 
         verify(miembroEquipoRepository).existsByEmail(request.email());
-        verify(miembroEquipoRepository).save(any(MiembroEquipo.class));
+        ArgumentCaptor<MiembroEquipo> miembroCaptor = ArgumentCaptor.forClass(MiembroEquipo.class);
+        verify(miembroEquipoRepository).save(miembroCaptor.capture());
+        assertNotEquals("Sebastian123", miembroCaptor.getValue().getPasswordHash());
+        assertTrue(new BCryptPasswordEncoder().matches("Sebastian123", miembroCaptor.getValue().getPasswordHash()));
     }
 
     @Test
@@ -68,8 +78,10 @@ class MiembroEquipoServiceTest {
         MiembroEquipoRequest request = new MiembroEquipoRequest(
                 "Sebastian",
                 "Mariqueo",
+                "Perez",
                 "sebastian.mariqueo@innovatech.cl",
-                RolEquipo.DEVELOPER
+                RolEquipo.DEVELOPER,
+                "Sebastian123"
         );
 
         when(miembroEquipoRepository.existsByEmail(request.email())).thenReturn(true);
@@ -89,9 +101,11 @@ class MiembroEquipoServiceTest {
     void obtenerMiembroPorId_deberiaRetornarMiembroCuandoExiste() {
         MiembroEquipo miembro = MiembroEquipo.builder()
                 .id(1L)
-                .nombre("Camila")
-                .apellido("Torres")
+                .nombres("Camila")
+                .apellidoPaterno("Torres")
+                .apellidoMaterno("Rojas")
                 .email("camila.torres@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.PROJECT_MANAGER)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -102,10 +116,36 @@ class MiembroEquipoServiceTest {
 
         assertNotNull(response);
         assertEquals(1L, response.id());
-        assertEquals("Camila", response.nombre());
+        assertEquals("Camila", response.nombres());
         assertEquals(RolEquipo.PROJECT_MANAGER, response.rol());
 
         verify(miembroEquipoRepository).findById(1L);
+    }
+
+    @Test
+    void obtenerMiembroAuthPorEmail_deberiaRetornarHashRolYEstado() {
+        MiembroEquipo miembro = MiembroEquipo.builder()
+                .id(1L)
+                .nombres("Camila")
+                .apellidoPaterno("Torres")
+                .apellidoMaterno("Rojas")
+                .email("camila.torres@innovatech.cl")
+                .passwordHash("hash-bcrypt")
+                .rol(RolEquipo.PROJECT_MANAGER)
+                .estado(EstadoMiembro.ACTIVO)
+                .build();
+
+        when(miembroEquipoRepository.findByEmail("camila.torres@innovatech.cl")).thenReturn(Optional.of(miembro));
+
+        var response = miembroEquipoService.obtenerMiembroAuthPorEmail("camila.torres@innovatech.cl");
+
+        assertEquals(1L, response.id());
+        assertEquals("camila.torres@innovatech.cl", response.email());
+        assertEquals("hash-bcrypt", response.passwordHash());
+        assertEquals(RolEquipo.PROJECT_MANAGER, response.rol());
+        assertEquals(EstadoMiembro.ACTIVO, response.estado());
+
+        verify(miembroEquipoRepository).findByEmail("camila.torres@innovatech.cl");
     }
 
     @Test
@@ -126,9 +166,11 @@ class MiembroEquipoServiceTest {
     void actualizarMiembro_deberiaActualizarCuandoEmailPerteneceAlMismoMiembro() {
         MiembroEquipo miembroExistente = MiembroEquipo.builder()
                 .id(1L)
-                .nombre("Sebastian")
-                .apellido("Mariqueo")
+                .nombres("Sebastian")
+                .apellidoPaterno("Mariqueo")
+                .apellidoMaterno("Perez")
                 .email("sebastian.mariqueo@innovatech.cl")
+                .passwordHash("hash-anterior")
                 .rol(RolEquipo.DEVELOPER)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -136,15 +178,19 @@ class MiembroEquipoServiceTest {
         MiembroEquipoRequest request = new MiembroEquipoRequest(
                 "Sebastian",
                 "Mariqueo Perez",
+                "Gonzalez",
                 "sebastian.mariqueo@innovatech.cl",
-                RolEquipo.DEVOPS
+                RolEquipo.DEVOPS,
+                "NuevaClave123"
         );
 
         MiembroEquipo miembroActualizado = MiembroEquipo.builder()
                 .id(1L)
-                .nombre("Sebastian")
-                .apellido("Mariqueo Perez")
+                .nombres("Sebastian")
+                .apellidoPaterno("Mariqueo Perez")
+                .apellidoMaterno("Gonzalez")
                 .email("sebastian.mariqueo@innovatech.cl")
+                .passwordHash("hash-nuevo")
                 .rol(RolEquipo.DEVOPS)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -155,7 +201,7 @@ class MiembroEquipoServiceTest {
 
         MiembroEquipoResponse response = miembroEquipoService.actualizarMiembro(1L, request);
 
-        assertEquals("Mariqueo Perez", response.apellido());
+        assertEquals("Mariqueo Perez", response.apellidoPaterno());
         assertEquals(RolEquipo.DEVOPS, response.rol());
 
         verify(miembroEquipoRepository).save(any(MiembroEquipo.class));
@@ -165,18 +211,22 @@ class MiembroEquipoServiceTest {
     void actualizarMiembro_deberiaLanzarExcepcionCuandoEmailPerteneceAOtroMiembro() {
         MiembroEquipo miembroActual = MiembroEquipo.builder()
                 .id(1L)
-                .nombre("Sebastian")
-                .apellido("Mariqueo")
+                .nombres("Sebastian")
+                .apellidoPaterno("Mariqueo")
+                .apellidoMaterno("Perez")
                 .email("sebastian.mariqueo@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.DEVELOPER)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
 
         MiembroEquipo otroMiembro = MiembroEquipo.builder()
                 .id(2L)
-                .nombre("Camila")
-                .apellido("Torres")
+                .nombres("Camila")
+                .apellidoPaterno("Torres")
+                .apellidoMaterno("Rojas")
                 .email("camila.torres@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.QA)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();
@@ -184,8 +234,10 @@ class MiembroEquipoServiceTest {
         MiembroEquipoRequest request = new MiembroEquipoRequest(
                 "Sebastian",
                 "Mariqueo",
+                "Perez",
                 "camila.torres@innovatech.cl",
-                RolEquipo.DEVELOPER
+                RolEquipo.DEVELOPER,
+                "Sebastian123"
         );
 
         when(miembroEquipoRepository.findById(1L)).thenReturn(Optional.of(miembroActual));
@@ -205,9 +257,11 @@ class MiembroEquipoServiceTest {
     void desactivarMiembro_deberiaCambiarEstadoAInactivo() {
         MiembroEquipo miembro = MiembroEquipo.builder()
                 .id(1L)
-                .nombre("Jorge")
-                .apellido("Salazar")
+                .nombres("Jorge")
+                .apellidoPaterno("Salazar")
+                .apellidoMaterno("Parra")
                 .email("jorge.salazar@innovatech.cl")
+                .passwordHash("hash")
                 .rol(RolEquipo.QA)
                 .estado(EstadoMiembro.ACTIVO)
                 .build();

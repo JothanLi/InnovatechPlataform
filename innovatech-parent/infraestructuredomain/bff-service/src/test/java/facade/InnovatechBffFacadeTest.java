@@ -3,10 +3,15 @@ package facade;
 import com.innovatech.bff_service.client.EquipoClient;
 import com.innovatech.bff_service.client.ProyectoClient;
 import com.innovatech.bff_service.client.TareaClient;
+import com.innovatech.bff_service.dto.AsignacionProyectoRequest;
 import com.innovatech.bff_service.dto.AsignacionProyectoResponse;
 import com.innovatech.bff_service.dto.AvanceProyectoResponse;
+import com.innovatech.bff_service.dto.MiembroEquipoRequest;
+import com.innovatech.bff_service.dto.MiembroEquipoResponse;
 import com.innovatech.bff_service.dto.ProyectoDetalleResponse;
+import com.innovatech.bff_service.dto.ProyectoRequestDTO;
 import com.innovatech.bff_service.dto.ProyectoResponseDTO;
+import com.innovatech.bff_service.dto.TareaRequestDTO;
 import com.innovatech.bff_service.dto.TareaResponseDTO;
 import com.innovatech.bff_service.facade.InnovatechBffFacade;
 import org.junit.jupiter.api.BeforeEach;
@@ -109,5 +114,126 @@ class InnovatechBffFacadeTest {
 
         verify(proyectoClient, times(1)).obtenerProyectoPorId(1L);
         verify(tareaClient, times(1)).listarTareasPorProyecto(1L);
+    }
+
+    @Test
+    void crearProyecto_deberiaDelegarEnProyectoClient() {
+        ProyectoRequestDTO request = new ProyectoRequestDTO(
+                "Portal Innovatech",
+                "Gestión de proyectos tecnológicos",
+                "PLANNED",
+                null,
+                null
+        );
+
+        ProyectoResponseDTO esperado = ProyectoResponseDTO.builder()
+                .id(10L)
+                .nombre(request.nombre())
+                .descripcion(request.descripcion())
+                .estado(request.estado())
+                .build();
+
+        when(proyectoClient.crearProyecto(request)).thenReturn(esperado);
+
+        ProyectoResponseDTO response = facade.crearProyecto(request);
+
+        assertEquals(10L, response.getId());
+        assertEquals("Portal Innovatech", response.getNombre());
+        verify(proyectoClient).crearProyecto(request);
+    }
+
+    @Test
+    void crearTarea_deberiaDelegarEnTareaClient() {
+        TareaRequestDTO request = new TareaRequestDTO(
+                "Configurar BFF",
+                "PENDING",
+                1L,
+                "Jonathan",
+                null,
+                null
+        );
+
+        TareaResponseDTO esperado = TareaResponseDTO.builder()
+                .id(8L)
+                .descripcion(request.descripcion())
+                .estado(request.estado())
+                .idProyecto(request.idProyecto())
+                .responsable(request.responsable())
+                .build();
+
+        when(tareaClient.crearTarea(request)).thenReturn(esperado);
+
+        TareaResponseDTO response = facade.crearTarea(request);
+
+        assertEquals(8L, response.getId());
+        assertEquals("Configurar BFF", response.getDescripcion());
+        verify(tareaClient).crearTarea(request);
+    }
+
+    @Test
+    void cambiarEstadoTarea_deberiaDelegarEnTareaClient() {
+        TareaResponseDTO esperado = TareaResponseDTO.builder()
+                .id(8L)
+                .estado("DONE")
+                .build();
+
+        when(tareaClient.cambiarEstadoTarea(eq(8L), any(TareaClient.CambioEstadoTareaRequest.class)))
+                .thenReturn(esperado);
+
+        TareaResponseDTO response = facade.cambiarEstadoTarea(8L, "DONE");
+
+        assertEquals("DONE", response.getEstado());
+        verify(tareaClient).cambiarEstadoTarea(eq(8L), any(TareaClient.CambioEstadoTareaRequest.class));
+    }
+
+    @Test
+    void listarYCrearMiembros_deberiaDelegarEnEquipoClient() {
+        MiembroEquipoRequest request = new MiembroEquipoRequest(
+                "Jorge",
+                "Salazar",
+                "Parra",
+                "jorge@innovatech.cl",
+                "DEVELOPER",
+                "Jorge123"
+        );
+
+        MiembroEquipoResponse miembro = MiembroEquipoResponse.builder()
+                .id(3L)
+                .nombres("Jorge")
+                .apellidoPaterno("Salazar")
+                .apellidoMaterno("Parra")
+                .email("jorge@innovatech.cl")
+                .rol("DEVELOPER")
+                .estado("ACTIVO")
+                .build();
+
+        when(equipoClient.listarMiembros()).thenReturn(List.of(miembro));
+        when(equipoClient.crearMiembro(request)).thenReturn(miembro);
+
+        assertEquals(1, facade.listarMiembros().size());
+        assertEquals(3L, facade.crearMiembro(request).getId());
+
+        verify(equipoClient).listarMiembros();
+        verify(equipoClient).crearMiembro(request);
+    }
+
+    @Test
+    void asignarMiembroAProyecto_deberiaDelegarEnEquipoClient() {
+        AsignacionProyectoRequest request = new AsignacionProyectoRequest(1L, 3L);
+        AsignacionProyectoResponse esperado = AsignacionProyectoResponse.builder()
+                .id(5L)
+                .idProyecto(1L)
+                .idMiembro(3L)
+                .nombreMiembro("Jorge Salazar")
+                .rolMiembro("DEVELOPER")
+                .build();
+
+        when(equipoClient.asignarMiembroAProyecto(request)).thenReturn(esperado);
+
+        AsignacionProyectoResponse response = facade.asignarMiembroAProyecto(request);
+
+        assertEquals(5L, response.getId());
+        assertEquals(3L, response.getIdMiembro());
+        verify(equipoClient).asignarMiembroAProyecto(request);
     }
 }

@@ -1,13 +1,17 @@
 package com.innovatech.equipos_service.service;
 
+import com.innovatech.equipos_service.dto.MiembroAuthResponse;
 import com.innovatech.equipos_service.dto.MiembroEquipoRequest;
 import com.innovatech.equipos_service.dto.MiembroEquipoResponse;
 import com.innovatech.equipos_service.exception.RecursoNoEncontradoException;
 import com.innovatech.equipos_service.exception.ReglaNegocioException;
+import com.innovatech.equipos_service.factory.MiembroEquipoFactory;
 import com.innovatech.equipos_service.model.EstadoMiembro;
 import com.innovatech.equipos_service.model.MiembroEquipo;
 import com.innovatech.equipos_service.repository.MiembroEquipoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.List;
 public class MiembroEquipoService {
 
     private final MiembroEquipoRepository miembroEquipoRepository;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
 
     public List<MiembroEquipoResponse> listarMiembros() {
         return miembroEquipoRepository.findAll()
@@ -30,18 +35,28 @@ public class MiembroEquipoService {
         return mapearMiembroResponse(miembro);
     }
 
+    public MiembroAuthResponse obtenerMiembroAuthPorEmail(String email) {
+        MiembroEquipo miembro = miembroEquipoRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe un miembro con email: " + email
+                ));
+
+        return new MiembroAuthResponse(
+                miembro.getId(),
+                miembro.getEmail(),
+                miembro.getPasswordHash(),
+                miembro.getRol(),
+                miembro.getEstado()
+        );
+    }
+
     public MiembroEquipoResponse crearMiembro(MiembroEquipoRequest request) {
         if (miembroEquipoRepository.existsByEmail(request.email())) {
             throw new ReglaNegocioException("Ya existe un miembro con el email: " + request.email());
         }
 
-        MiembroEquipo miembro = MiembroEquipo.builder()
-                .nombre(request.nombre())
-                .apellido(request.apellido())
-                .email(request.email())
-                .rol(request.rol())
-                .estado(EstadoMiembro.ACTIVO)
-                .build();
+        String passwordHash = passwordEncoder.encode(request.password());
+        MiembroEquipo miembro = MiembroEquipoFactory.crearDesdeRequest(request, passwordHash);
 
         MiembroEquipo guardado = miembroEquipoRepository.save(miembro);
         return mapearMiembroResponse(guardado);
@@ -57,10 +72,12 @@ public class MiembroEquipoService {
                     }
                 });
 
-        miembro.setNombre(request.nombre());
-        miembro.setApellido(request.apellido());
+        miembro.setNombres(request.nombres());
+        miembro.setApellidoPaterno(request.apellidoPaterno());
+        miembro.setApellidoMaterno(request.apellidoMaterno());
         miembro.setEmail(request.email());
         miembro.setRol(request.rol());
+        miembro.setPasswordHash(passwordEncoder.encode(request.password()));
 
         MiembroEquipo actualizado = miembroEquipoRepository.save(miembro);
         return mapearMiembroResponse(actualizado);
@@ -84,13 +101,6 @@ public class MiembroEquipoService {
     }
 
     private MiembroEquipoResponse mapearMiembroResponse(MiembroEquipo miembro) {
-        return new MiembroEquipoResponse(
-                miembro.getId(),
-                miembro.getNombre(),
-                miembro.getApellido(),
-                miembro.getEmail(),
-                miembro.getRol(),
-                miembro.getEstado()
-        );
+        return MiembroEquipoFactory.crearResponse(miembro);
     }
 }

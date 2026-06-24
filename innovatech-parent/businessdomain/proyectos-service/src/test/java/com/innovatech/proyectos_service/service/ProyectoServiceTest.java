@@ -4,6 +4,7 @@ import com.innovatech.proyectos_service.dto.ProyectoRequestDTO;
 import com.innovatech.proyectos_service.dto.ProyectoResponseDTO;
 import com.innovatech.proyectos_service.exception.RecursoNoEncontradoException;
 import com.innovatech.proyectos_service.exception.ReglaNegocioException;
+import com.innovatech.proyectos_service.facade.TareaServiceFacade;
 import com.innovatech.proyectos_service.model.EstadoProyecto;
 import com.innovatech.proyectos_service.model.Proyecto;
 import com.innovatech.proyectos_service.repository.ProyectoRepository;
@@ -25,6 +26,9 @@ class ProyectoServiceTest {
 
     @Mock
     private ProyectoRepository proyectoRepository;
+
+    @Mock
+    private TareaServiceFacade tareaServiceFacade;
 
     @InjectMocks
     private ProyectoService proyectoService;
@@ -236,7 +240,32 @@ class ProyectoServiceTest {
         assertEquals(EstadoProyecto.IN_PROGRESS, response.getEstado());
 
         verify(proyectoRepository).findById(1L);
+        verify(tareaServiceFacade, never()).existenTareasPendientes(1L);
         verify(proyectoRepository).save(any(Proyecto.class));
+    }
+
+    @Test
+    void cambiarEstado_deberiaLanzarExcepcionSiExistenTareasPendientes() {
+        Proyecto proyecto = Proyecto.builder()
+                .id(1L)
+                .nombre("Proyecto")
+                .descripcion("Descripción")
+                .estado(EstadoProyecto.IN_PROGRESS)
+                .build();
+
+        when(proyectoRepository.findById(1L)).thenReturn(Optional.of(proyecto));
+        when(tareaServiceFacade.existenTareasPendientes(1L)).thenReturn(true);
+
+        ReglaNegocioException exception = assertThrows(
+                ReglaNegocioException.class,
+                () -> proyectoService.cambiarEstado(1L, EstadoProyecto.COMPLETED)
+        );
+
+        assertEquals("No se puede finalizar el proyecto porque existen tareas pendientes", exception.getMessage());
+
+        verify(proyectoRepository).findById(1L);
+        verify(tareaServiceFacade).existenTareasPendientes(1L);
+        verify(proyectoRepository, never()).save(any(Proyecto.class));
     }
 
     @Test

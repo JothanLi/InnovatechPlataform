@@ -4,10 +4,15 @@ import com.innovatech.bff_service.client.EquipoClient;
 import com.innovatech.bff_service.client.ProyectoClient;
 import com.innovatech.bff_service.client.TareaClient;
 import com.innovatech.bff_service.dto.AsignacionProyectoResponse;
+import com.innovatech.bff_service.dto.AsignacionProyectoRequest;
 import com.innovatech.bff_service.dto.AvanceProyectoResponse;
 import com.innovatech.bff_service.dto.DashboardResumenResponse;
+import com.innovatech.bff_service.dto.MiembroEquipoRequest;
+import com.innovatech.bff_service.dto.MiembroEquipoResponse;
 import com.innovatech.bff_service.dto.ProyectoDetalleResponse;
+import com.innovatech.bff_service.dto.ProyectoRequestDTO;
 import com.innovatech.bff_service.dto.ProyectoResponseDTO;
+import com.innovatech.bff_service.dto.TareaRequestDTO;
 import com.innovatech.bff_service.dto.TareaResponseDTO;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +40,10 @@ public class InnovatechBffFacade {
         return proyectoClient.listarProyectos();
     }
 
+    public ProyectoResponseDTO crearProyecto(ProyectoRequestDTO request) {
+        return proyectoClient.crearProyecto(request);
+    }
+
     public ProyectoDetalleResponse obtenerDetalleProyecto(Long idProyecto) {
         ProyectoResponseDTO proyecto = proyectoClient.obtenerProyectoPorId(idProyecto);
         List<TareaResponseDTO> tareas = tareaClient.listarTareasPorProyecto(idProyecto);
@@ -53,8 +62,31 @@ public class InnovatechBffFacade {
         return tareaClient.listarTareasPorProyecto(idProyecto);
     }
 
+    public TareaResponseDTO crearTarea(TareaRequestDTO request) {
+        return tareaClient.crearTarea(request);
+    }
+
+    public TareaResponseDTO cambiarEstadoTarea(Long idTarea, String estado) {
+        return tareaClient.cambiarEstadoTarea(
+                idTarea,
+                new TareaClient.CambioEstadoTareaRequest(estado)
+        );
+    }
+
+    public List<MiembroEquipoResponse> listarMiembros() {
+        return equipoClient.listarMiembros();
+    }
+
+    public MiembroEquipoResponse crearMiembro(MiembroEquipoRequest request) {
+        return equipoClient.crearMiembro(request);
+    }
+
     public List<AsignacionProyectoResponse> obtenerMiembrosPorProyecto(Long idProyecto) {
         return equipoClient.listarMiembrosPorProyecto(idProyecto);
+    }
+
+    public AsignacionProyectoResponse asignarMiembroAProyecto(AsignacionProyectoRequest request) {
+        return equipoClient.asignarMiembroAProyecto(request);
     }
 
     public AvanceProyectoResponse obtenerAvanceProyecto(Long idProyecto) {
