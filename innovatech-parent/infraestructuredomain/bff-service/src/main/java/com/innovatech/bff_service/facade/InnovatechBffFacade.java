@@ -97,7 +97,18 @@ public class InnovatechBffFacade {
     }
 
     public DashboardResumenResponse obtenerDashboardResumen() {
-        List<ProyectoResponseDTO> proyectos = proyectoClient.listarProyectos();
+        List<ProyectoResponseDTO> proyectos;
+
+        try {
+            proyectos = proyectoClient.listarProyectos();
+
+            if (proyectos == null) {
+                proyectos = new ArrayList<>();
+            }
+        } catch (Exception exception) {
+            System.err.println("No se pudieron cargar los proyectos para el dashboard: " + exception.getMessage());
+            proyectos = new ArrayList<>();
+        }
 
         int totalProyectos = proyectos.size();
 
@@ -110,13 +121,31 @@ public class InnovatechBffFacade {
         List<AsignacionProyectoResponse> todasLasAsignaciones = new ArrayList<>();
 
         for (ProyectoResponseDTO proyecto : proyectos) {
+            if (proyecto == null || proyecto.getId() == null) {
+                continue;
+            }
+
             Long idProyecto = proyecto.getId();
 
-            List<TareaResponseDTO> tareasProyecto = tareaClient.listarTareasPorProyecto(idProyecto);
-            List<AsignacionProyectoResponse> asignacionesProyecto = equipoClient.listarMiembrosPorProyecto(idProyecto);
+            try {
+                List<TareaResponseDTO> tareasProyecto = tareaClient.listarTareasPorProyecto(idProyecto);
 
-            todasLasTareas.addAll(tareasProyecto);
-            todasLasAsignaciones.addAll(asignacionesProyecto);
+                if (tareasProyecto != null) {
+                    todasLasTareas.addAll(tareasProyecto);
+                }
+            } catch (Exception exception) {
+                System.err.println("No se pudieron cargar tareas del proyecto " + idProyecto + ": " + exception.getMessage());
+            }
+
+            try {
+                List<AsignacionProyectoResponse> asignacionesProyecto = equipoClient.listarMiembrosPorProyecto(idProyecto);
+
+                if (asignacionesProyecto != null) {
+                    todasLasAsignaciones.addAll(asignacionesProyecto);
+                }
+            } catch (Exception exception) {
+                System.err.println("No se pudieron cargar asignaciones del proyecto " + idProyecto + ": " + exception.getMessage());
+            }
         }
 
         int totalTareas = todasLasTareas.size();
@@ -126,6 +155,7 @@ public class InnovatechBffFacade {
 
         int totalMiembrosAsignados = (int) todasLasAsignaciones.stream()
                 .map(AsignacionProyectoResponse::getIdMiembro)
+                .filter(idMiembro -> idMiembro != null)
                 .distinct()
                 .count();
 
@@ -147,7 +177,6 @@ public class InnovatechBffFacade {
                 .porcentajeAvanceGeneral(redondearDosDecimales(porcentajeAvanceGeneral))
                 .build();
     }
-
     private AvanceProyectoResponse calcularAvance(
             ProyectoResponseDTO proyecto,
             List<TareaResponseDTO> tareas

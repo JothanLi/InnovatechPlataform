@@ -1,9 +1,12 @@
 package com.innovatech.bff_service.exception;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.innovatech.bff_service.dto.ErrorResponse;
 import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -15,34 +18,33 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(FeignException.NotFound.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse manejarNotFound(
-            FeignException.NotFound exception,
-            HttpServletRequest request
-    ) {
-        return ErrorResponse.builder()
-                .fecha(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Recurso no encontrado")
-                .mensaje("El recurso solicitado no existe en alguno de los microservicios.")
-                .path(request.getRequestURI())
-                .build();
+    private final ObjectMapper objectMapper;
+
+    public GlobalExceptionHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     @ExceptionHandler(FeignException.class)
-    @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    public ErrorResponse manejarErrorMicroservicio(
+    public ResponseEntity<ErrorResponse> manejarErrorMicroservicio(
             FeignException exception,
             HttpServletRequest request
     ) {
-        return ErrorResponse.builder()
+        HttpStatus status = resolverStatus(exception.status());
+
+        String mensaje = extraerMensajeFeign(
+                exception,
+                "No fue posible completar la operación en uno de los microservicios."
+        );
+
+        ErrorResponse response = ErrorResponse.builder()
                 .fecha(LocalDateTime.now())
-                .status(HttpStatus.BAD_GATEWAY.value())
-                .error("Error de comunicación con microservicio")
-                .mensaje("No fue posible obtener respuesta desde uno de los microservicios.")
+                .status(status.value())
+                .error(resolverTituloError(status))
+                .mensaje(mensaje)
                 .path(request.getRequestURI())
                 .build();
+
+        return ResponseEntity.status(status).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -79,5 +81,55 @@ public class GlobalExceptionHandler {
                 .mensaje(exception.getMessage())
                 .path(request.getRequestURI())
                 .build();
+    }
+
+    private HttpStatus resolverStatus(int statusFeign) {
+        HttpStatus status = HttpStatus.resolve(statusFeign);
+
+        if (status == null) {
+            return HttpStatus.BAD_GATEWAY;
+        }
+
+        return status;
+    }
+
+    private String resolverTituloError(HttpStatus status) {
+        if (status.is4xxClientError()) {
+            return "Solicitud rechazada por microservicio";
+        }
+
+        if (status.is5xxServerError()) {
+            return "Error de comunicación con microservicio";
+        }
+
+        return "Respuesta de microservicio";
+    }
+
+    private String extraerMensajeFeign(FeignException exception, String fallback) {
+        String contenido = exception.contentUTF8();
+
+        if (contenido == null || contenido.isBlank()) {
+            return fallback;
+        }
+
+        try {
+            JsonNode json = objectMapper.readTree(contenido);
+
+            if (json.hasNonNull("mensaje")) {
+                return json.get("mensaje").asText();
+            }
+
+            if (json.hasNonNull("message")) {
+                return json.get("message").asText();
+            }
+
+            if (json.hasNonNull("error")) {
+                return json.get("error").asText();
+            }
+
+            return contenido;
+        } catch (Exception ignored) {
+            return contenido;
+        }
     }
 }
