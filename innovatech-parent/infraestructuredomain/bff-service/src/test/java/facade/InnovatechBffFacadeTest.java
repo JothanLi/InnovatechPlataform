@@ -14,6 +14,7 @@ import com.innovatech.bff_service.dto.ProyectoResponseDTO;
 import com.innovatech.bff_service.dto.TareaRequestDTO;
 import com.innovatech.bff_service.dto.TareaResponseDTO;
 import com.innovatech.bff_service.facade.InnovatechBffFacade;
+import com.innovatech.bff_service.security.CurrentUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +28,7 @@ class InnovatechBffFacadeTest {
     private ProyectoClient proyectoClient;
     private TareaClient tareaClient;
     private EquipoClient equipoClient;
+    private CurrentUserService currentUserService;
     private InnovatechBffFacade facade;
 
     @BeforeEach
@@ -34,11 +36,22 @@ class InnovatechBffFacadeTest {
         proyectoClient = mock(ProyectoClient.class);
         tareaClient = mock(TareaClient.class);
         equipoClient = mock(EquipoClient.class);
+        currentUserService = mock(CurrentUserService.class);
+
+        when(currentUserService.getCurrentUser()).thenReturn(
+                new CurrentUserService.CurrentUser(
+                        1L,
+                        "admin@innovatech.cl",
+                        "ADMIN",
+                        "Admin Innovatech"
+                )
+        );
 
         facade = new InnovatechBffFacade(
                 proyectoClient,
                 tareaClient,
-                equipoClient
+                equipoClient,
+                currentUserService
         );
     }
 
@@ -175,7 +188,24 @@ class InnovatechBffFacadeTest {
         TareaResponseDTO esperado = TareaResponseDTO.builder()
                 .id(8L)
                 .estado("DONE")
+                .idProyecto(1L)
                 .build();
+
+        ProyectoResponseDTO proyecto = ProyectoResponseDTO.builder()
+                .id(1L)
+                .nombre("Plataforma Innovatech")
+                .estado("IN_PROGRESS")
+                .build();
+
+        when(proyectoClient.listarProyectos()).thenReturn(List.of(proyecto));
+        when(tareaClient.listarTareasPorProyecto(1L)).thenReturn(List.of(
+                TareaResponseDTO.builder()
+                        .id(8L)
+                        .estado("IN_PROGRESS")
+                        .idProyecto(1L)
+                        .responsable("Admin Innovatech")
+                        .build()
+        ));
 
         when(tareaClient.cambiarEstadoTarea(eq(8L), any(TareaClient.CambioEstadoTareaRequest.class)))
                 .thenReturn(esperado);

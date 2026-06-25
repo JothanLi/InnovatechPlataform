@@ -28,6 +28,8 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.GET, "/api/v1/equipos/**").permitAll()
 
+                        .requestMatchers(HttpMethod.POST, "/api/v1/equipos/asignaciones")
+                        .hasAnyRole("ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/equipos/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/equipos/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/equipos/**").hasRole("ADMIN")

@@ -1023,6 +1023,96 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.users-metrics {
+  margin-bottom: 0;
+}
+
+.users-filters-panel {
+  align-items: end;
+  grid-template-columns: minmax(280px, 1fr) minmax(210px, 0.35fr) minmax(360px, 1fr);
+}
+
+.compact-select-field {
+  margin: 0;
+}
+
+.user-state-pills {
+  justify-content: flex-end;
+}
+
+.users-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+}
+
+.user-card {
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 20px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.user-card-main {
+  align-items: flex-start;
+  display: flex;
+  gap: 14px;
+}
+
+.user-avatar {
+  height: 54px;
+  width: 54px;
+}
+
+.user-email {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-card-meta {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.user-card-meta div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.user-card-meta small {
+  color: #64748b;
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.user-card-meta strong {
+  color: #0f172a;
+  display: block;
+  font-size: 15px;
+  margin-top: 4px;
+}
+
+.user-card-footer {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.user-card-action {
+  margin: 0;
+}
+
 .member-status {
   border-radius: 999px;
   background: #e2e8f0;
@@ -1127,11 +1217,13 @@ textarea {
 
 @media (max-width: 1100px) {
   .admin-dashboard-grid,
-  .filters-panel {
+  .filters-panel,
+  .users-filters-panel {
     grid-template-columns: 1fr;
   }
 
-  .filter-pills {
+  .filter-pills,
+  .user-state-pills {
     justify-content: flex-start;
   }
 }
@@ -1164,6 +1256,21 @@ textarea {
   }
 
   .form-actions-pro .button {
+    text-align: center;
+    width: 100%;
+  }
+
+  .users-grid,
+  .user-card-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .user-card-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-card-action {
     text-align: center;
     width: 100%;
   }
@@ -1426,5 +1533,344 @@ textarea {
 
   .workspace-tabs button {
     flex: 1;
+  }
+}
+
+/* ===== Experiencia usuario normal ===== */
+.work-shell {
+  background: #f8fafc;
+  display: grid;
+  gap: 20px;
+  margin: 0 auto;
+  max-width: 1440px;
+  min-height: calc(100vh - 72px);
+  padding: 28px;
+}
+
+.work-hero,
+.project-work-hero {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 22px;
+  justify-content: space-between;
+  padding: 26px;
+}
+
+.work-hero h1,
+.project-work-hero h1 {
+  color: #0f172a;
+  font-size: 38px;
+  line-height: 1.1;
+  margin: 0 0 8px;
+}
+
+.work-hero p,
+.project-work-hero p {
+  color: #64748b;
+  margin: 0;
+  max-width: 780px;
+}
+
+.work-hero-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.work-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin-bottom: 0;
+}
+
+.work-metric {
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.work-metric small {
+  color: #64748b;
+  display: block;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.work-toolbar {
+  align-items: end;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.55fr) minmax(0, 1fr);
+  padding: 16px;
+}
+
+.work-project-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.work-project-card {
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+  display: flex;
+  flex-direction: column;
+  min-height: 290px;
+  padding: 18px;
+}
+
+.work-card-top {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.work-card-top small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.work-project-card h2 {
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 16px 0 8px;
+}
+
+.work-project-card p {
+  color: #475569;
+  flex: 1;
+  line-height: 1.55;
+}
+
+.work-card-dates {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.work-card-dates div {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.work-card-dates small,
+.project-work-side small {
+  color: #64748b;
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.work-card-dates strong {
+  color: #0f172a;
+  display: block;
+  font-size: 14px;
+  margin-top: 3px;
+}
+
+.work-form-panel {
+  border-radius: 18px;
+  margin-bottom: 0;
+}
+
+.project-work-hero {
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 36%),
+    #ffffff;
+}
+
+.project-work-side {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 170px;
+}
+
+.project-work-side strong {
+  color: #0f172a;
+  font-size: 40px;
+  line-height: 1;
+}
+
+.work-tabs {
+  background: #e2e8f0;
+}
+
+.work-detail-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+}
+
+.work-main-panel {
+  border-radius: 18px;
+  grid-row: span 2;
+}
+
+.work-side-panel {
+  border-radius: 18px;
+  margin-bottom: 0;
+}
+
+.mini-team-list {
+  display: grid;
+  gap: 12px;
+}
+
+.mini-team-list > div {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+}
+
+.mini-team-list strong,
+.mini-team-list small {
+  display: block;
+}
+
+.mini-team-list small {
+  color: #64748b;
+  font-weight: 800;
+}
+
+.tasks-workspace {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 340px minmax(0, 1fr);
+}
+
+.tasks-workspace-full {
+  grid-template-columns: 1fr;
+}
+
+.task-create-panel {
+  position: sticky;
+  top: 18px;
+}
+
+.task-kanban {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+}
+
+.kanban-column {
+  background: #eef2f7;
+  border: 1px solid #dbe3ee;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 420px;
+  padding: 14px;
+}
+
+.kanban-column-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.kanban-column-head h2 {
+  color: #0f172a;
+  font-size: 18px;
+  margin: 0;
+}
+
+.kanban-column-head span {
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 999px;
+  color: #334155;
+  font-weight: 800;
+  min-width: 32px;
+  padding: 4px 9px;
+  text-align: center;
+}
+
+.work-task-card {
+  border-radius: 16px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.07);
+}
+
+.empty-column {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+}
+
+.team-work-grid {
+  grid-template-columns: 340px minmax(0, 1fr);
+}
+
+.team-work-grid-readonly {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1100px) {
+  .work-toolbar,
+  .work-detail-grid,
+  .tasks-workspace,
+  .team-work-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-create-panel {
+    position: static;
+  }
+
+  .task-kanban {
+    overflow-x: auto;
+  }
+
+  .task-kanban {
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .work-shell {
+    padding: 18px;
+  }
+
+  .work-hero,
+  .project-work-hero,
+  .work-hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-hero h1,
+  .project-work-hero h1 {
+    font-size: 30px;
+  }
+
+  .project-work-side {
+    align-items: flex-start;
+  }
+
+  .work-card-dates,
+  .task-summary-row {
+    grid-template-columns: 1fr;
   }
 }

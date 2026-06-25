@@ -67,24 +67,26 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
 
-                        // GET públicos
-                        .requestMatchers(HttpMethod.GET, "/api/v1/proyectos/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/tareas/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/equipos/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/bff/**").permitAll()
+                        // Lectura autenticada; el BFF aplica filtros finos por usuario y proyecto.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/**").authenticated()
 
                         // Escritura protegida por roles
-                        .requestMatchers(HttpMethod.POST, "/api/v1/**")
-                        .hasAnyRole("ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER", "DEVELOPER")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bff/proyectos/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bff/miembros/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bff/asignaciones/**")
+                        .hasAnyRole("ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bff/tareas/**")
+                        .hasAnyRole("ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/**").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.PUT, "/api/v1/**")
-                        .hasAnyRole("ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER", "DEVELOPER")
+                        .hasRole("ADMIN")
 
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/**")
-                        .hasAnyRole("ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER", "DEVELOPER", "QA")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/bff/tareas/*/estado").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/**").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/**")
-                        .hasAnyRole("ADMIN", "PROJECT_MANAGER")
+                        .hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )

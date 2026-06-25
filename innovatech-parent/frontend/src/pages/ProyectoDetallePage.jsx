@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import bffApi from "../api/bffApi";
 
@@ -10,54 +10,69 @@ const tareaInicial = {
   fechaFinEstimada: "",
 };
 
-const miembroInicial = {
-  nombres: "",
-  apellidoPaterno: "",
-  apellidoMaterno: "",
-  email: "",
-  rol: "DEVELOPER",
-  password: "",
-};
+const columnasTareas = [
+  { estado: "PENDING", titulo: "Pendientes" },
+  { estado: "IN_PROGRESS", titulo: "En progreso" },
+  { estado: "DONE", titulo: "Terminadas" },
+];
 
 function ProyectoDetallePage() {
   const { idProyecto } = useParams();
+  const rolesSesion = JSON.parse(localStorage.getItem("innovatech_roles") || "[]");
+  const puedeGestionarProyecto = rolesSesion.some((rol) =>
+    ["ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER"].includes(rol)
+  );
 
   const [detalle, setDetalle] = useState(null);
   const [miembros, setMiembros] = useState([]);
   const [formTarea, setFormTarea] = useState(tareaInicial);
-  const [formMiembro, setFormMiembro] = useState(miembroInicial);
   const [idMiembroAsignar, setIdMiembroAsignar] = useState("");
+  const [tabActiva, setTabActiva] = useState("resumen");
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  useEffect(() => {
-    cargarVista();
-  }, [idProyecto]);
-
-  const cargarVista = async () => {
+  const cargarVista = useCallback(async () => {
     try {
-      const [detalleResponse, miembrosResponse] = await Promise.all([
-        bffApi.get(`/proyectos/${idProyecto}/detalle`),
-        bffApi.get("/miembros"),
-      ]);
+      const detalleResponse = await bffApi.get(`/proyectos/${idProyecto}/detalle`);
 
       setDetalle(detalleResponse.data);
-      setMiembros(miembrosResponse.data);
+
+      if (puedeGestionarProyecto) {
+        const miembrosResponse = await bffApi.get("/miembros");
+        setMiembros(miembrosResponse.data);
+      } else {
+        setMiembros([]);
+      }
+
       setError("");
-    } catch (error) {
+    } catch {
       setError("No se pudo cargar el detalle del proyecto.");
     }
-  };
+  }, [idProyecto, puedeGestionarProyecto]);
+
+  useEffect(() => {
+    Promise.resolve().then(cargarVista);
+  }, [cargarVista]);
+
+  const tareasPorEstado = useMemo(() => {
+    return columnasTareas.map((columna) => ({
+      ...columna,
+      tareas: detalle?.tareas?.filter((tarea) => tarea.estado === columna.estado) || [],
+    }));
+  }, [detalle]);
+
+  const miembrosDisponibles = useMemo(() => {
+    const idsAsignados = new Set(
+      detalle?.miembrosAsignados?.map((miembro) => Number(miembro.idMiembro || miembro.id)) || []
+    );
+
+    return miembros.filter((miembro) => !idsAsignados.has(Number(miembro.id)));
+  }, [detalle, miembros]);
 
   const actualizarCampoTarea = (event) => {
     const { name, value } = event.target;
     setFormTarea((formActual) => ({ ...formActual, [name]: value }));
-  };
-
-  const actualizarCampoMiembro = (event) => {
-    const { name, value } = event.target;
-    setFormMiembro((formActual) => ({ ...formActual, [name]: value }));
   };
 
   const crearTarea = async (event) => {
@@ -76,25 +91,6 @@ function ProyectoDetallePage() {
       await cargarVista();
     } catch (error) {
       setError(obtenerMensajeError(error, "No se pudo crear la tarea."));
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const crearMiembro = async (event) => {
-    event.preventDefault();
-    setGuardando(true);
-    setError("");
-    setMensaje("");
-
-    try {
-      const response = await bffApi.post("/miembros", formMiembro);
-      setFormMiembro(miembroInicial);
-      setIdMiembroAsignar(String(response.data.id));
-      setMensaje("Miembro creado correctamente.");
-      await cargarVista();
-    } catch (error) {
-      setError(obtenerMensajeError(error, "No se pudo crear el miembro."));
     } finally {
       setGuardando(false);
     }
@@ -136,253 +132,259 @@ function ProyectoDetallePage() {
 
   if (error && !detalle) {
     return (
-      <div className="container">
-        <Link to="/">← Volver</Link>
+      <main className="work-shell">
+        <Link className="back-link" to="/proyectos">Volver a proyectos</Link>
         <p className="error">{error}</p>
-        {detalle && (
-          <button className="button" type="button" onClick={cargarVista}>
-            Reintentar
-          </button>
-        )}
-      </div>
+      </main>
     );
   }
 
   if (!detalle) {
     return (
-      <div className="container">
-        <p>Cargando detalle...</p>
-      </div>
+      <main className="work-shell">
+        <section className="panel loading-card">
+          <p>Cargando tablero del proyecto...</p>
+        </section>
+      </main>
     );
   }
 
   return (
-    <main className="container">
-      <Link className="back-link" to="/">← Volver a proyectos</Link>
+    <main className="work-shell">
+      <div className="workspace-breadcrumb">
+        <Link className="back-link" to="/proyectos">Volver a proyectos</Link>
+        <button type="button" onClick={cargarVista}>Actualizar</button>
+      </div>
 
-      {mensaje && <p className="success">{mensaje}</p>}
-      {error && <p className="error">{error}</p>}
+      {mensaje && <p className="success alert-message">{mensaje}</p>}
+      {error && <p className="error alert-message">{error}</p>}
 
-      <header className="page-header">
+      <section className="project-work-hero">
         <div>
+          <p className="eyebrow">Tablero del proyecto</p>
           <h1>{detalle.proyecto.nombre}</h1>
           <p>{detalle.proyecto.descripcion}</p>
         </div>
-        <span className={`status status-${detalle.proyecto.estado}`}>
-          {formatearEstadoProyecto(detalle.proyecto.estado)}
-        </span>
-      </header>
 
-      <section className="panel">
-        <h2>Avance del proyecto</h2>
-        <div className="progress">
-          <div
-            className="progress-bar"
-            style={{ width: `${detalle.avance.porcentajeAvance}%` }}
-          />
-        </div>
-        <div className="metrics-grid compact">
-          <div className="metric">
-            <span>Total tareas</span>
-            <strong>{detalle.avance.totalTareas}</strong>
-          </div>
-          <div className="metric">
-            <span>Pendientes</span>
-            <strong>{detalle.avance.tareasPendientes}</strong>
-          </div>
-          <div className="metric">
-            <span>En progreso</span>
-            <strong>{detalle.avance.tareasEnProgreso}</strong>
-          </div>
-          <div className="metric">
-            <span>Completado</span>
-            <strong>{detalle.avance.porcentajeAvance}%</strong>
-          </div>
+        <div className="project-work-side">
+          <span className={`status status-${detalle.proyecto.estado}`}>
+            {formatearEstadoProyecto(detalle.proyecto.estado)}
+          </span>
+          <strong>{formatearPorcentaje(detalle.avance.porcentajeAvance)}</strong>
+          <small>avance completado</small>
         </div>
       </section>
 
-      <section className="panel">
-        <h2>Crear tarea</h2>
-        <form className="form-grid" onSubmit={crearTarea}>
-          <label className="span-2">
-            Descripción
-            <textarea
-              name="descripcion"
-              value={formTarea.descripcion}
-              onChange={actualizarCampoTarea}
-              maxLength="500"
-              rows="3"
-              required
-            />
-          </label>
+      <nav className="workspace-tabs work-tabs" aria-label="Vistas del proyecto">
+        <button className={tabActiva === "resumen" ? "active" : ""} type="button" onClick={() => setTabActiva("resumen")}>Resumen</button>
+        <button className={tabActiva === "tareas" ? "active" : ""} type="button" onClick={() => setTabActiva("tareas")}>Tareas</button>
+        <button className={tabActiva === "equipo" ? "active" : ""} type="button" onClick={() => setTabActiva("equipo")}>Equipo</button>
+      </nav>
 
-          <label>
-            Responsable
-            <input
-              name="responsable"
-              value={formTarea.responsable}
-              onChange={actualizarCampoTarea}
-              maxLength="120"
-              required
-            />
-          </label>
-
-          <label>
-            Estado
-            <select name="estado" value={formTarea.estado} onChange={actualizarCampoTarea}>
-              <option value="PENDING">Pendiente</option>
-              <option value="IN_PROGRESS">En progreso</option>
-              <option value="DONE">Terminada</option>
-            </select>
-          </label>
-
-          <label>
-            Inicio
-            <input
-              type="date"
-              name="fechaInicio"
-              value={formTarea.fechaInicio}
-              onChange={actualizarCampoTarea}
-            />
-          </label>
-
-          <label>
-            Fin estimado
-            <input
-              type="date"
-              name="fechaFinEstimada"
-              value={formTarea.fechaFinEstimada}
-              onChange={actualizarCampoTarea}
-            />
-          </label>
-
-          <div className="form-actions span-2">
-            <button className="button" type="submit" disabled={guardando}>
-              Crear tarea
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section>
-        <h2>Tareas</h2>
-
-        {detalle.tareas.length === 0 ? (
-          <p>No hay tareas registradas.</p>
-        ) : (
-          detalle.tareas.map((tarea) => (
-            <div className="card" key={tarea.id}>
-              <h3>{tarea.descripcion}</h3>
-              <span className={`status status-${tarea.estado}`}>
-                {formatearEstadoTarea(tarea.estado)}
-              </span>
-              <p>
-                <strong>Responsable:</strong> {tarea.responsable}
-              </p>
-              <div className="inline-actions">
-                <button
-                  type="button"
-                  onClick={() => cambiarEstadoTarea(tarea.id, "IN_PROGRESS")}
-                  disabled={tarea.estado !== "PENDING"}
-                >
-                  Iniciar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cambiarEstadoTarea(tarea.id, "DONE")}
-                  disabled={tarea.estado === "DONE"}
-                >
-                  Finalizar
-                </button>
+      {tabActiva === "resumen" && (
+        <section className="work-detail-grid">
+          <article className="panel work-main-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Avance del proyecto</h2>
+                <p>Progreso calculado desde las tareas registradas.</p>
               </div>
+              <strong className="progress-number">{formatearPorcentaje(detalle.avance.porcentajeAvance)}</strong>
             </div>
-          ))
-        )}
-      </section>
 
-      <section className="panel">
-        <h2>Registrar miembro</h2>
-        <form className="form-grid" onSubmit={crearMiembro}>
-          <label>
-            Nombres
-            <input name="nombres" value={formMiembro.nombres} onChange={actualizarCampoMiembro} required />
-          </label>
-          <label>
-            Apellido paterno
-            <input name="apellidoPaterno" value={formMiembro.apellidoPaterno} onChange={actualizarCampoMiembro} required />
-          </label>
-          <label>
-            Apellido materno
-            <input name="apellidoMaterno" value={formMiembro.apellidoMaterno} onChange={actualizarCampoMiembro} required />
-          </label>
-          <label>
-            Email
-            <input type="email" name="email" value={formMiembro.email} onChange={actualizarCampoMiembro} required />
-          </label>
-          <label>
-            Contraseña
-            <input type="password" name="password" value={formMiembro.password} onChange={actualizarCampoMiembro} minLength="8" required />
-          </label>
-          <label>
-            Rol
-            <select name="rol" value={formMiembro.rol} onChange={actualizarCampoMiembro}>
-              <option value="PROJECT_MANAGER">Project Manager</option>
-              <option value="SCRUM_MASTER">Scrum Master</option>
-              <option value="DEVELOPER">Developer</option>
-              <option value="QA">QA</option>
-              <option value="DEVOPS">DevOps</option>
-              <option value="UI_UX">UI/UX</option>
-            </select>
-          </label>
-          <div className="form-actions span-2">
-            <button className="button" type="submit" disabled={guardando}>
-              Registrar miembro
-            </button>
+            <div className="progress progress-xl">
+              <div className="progress-bar" style={{ width: `${limitarPorcentaje(detalle.avance.porcentajeAvance)}%` }} />
+            </div>
+
+            <div className="task-summary-row">
+              <TaskResume label="Total tareas" value={detalle.avance.totalTareas} />
+              <TaskResume label="Pendientes" value={detalle.avance.tareasPendientes} />
+              <TaskResume label="En progreso" value={detalle.avance.tareasEnProgreso} />
+            </div>
+          </article>
+
+          <article className="panel work-side-panel">
+            <h2>Fechas</h2>
+            <dl className="detail-list">
+              <div>
+                <dt>Inicio</dt>
+                <dd>{formatearFecha(detalle.proyecto.fechaInicio)}</dd>
+              </div>
+              <div>
+                <dt>Fin estimado</dt>
+                <dd>{formatearFecha(detalle.proyecto.fechaFinEstimada)}</dd>
+              </div>
+              <div>
+                <dt>Estado de agenda</dt>
+                <dd>{obtenerIndicadorFecha(detalle.proyecto)}</dd>
+              </div>
+            </dl>
+          </article>
+
+          <article className="panel work-side-panel">
+            <h2>Equipo asignado</h2>
+            {detalle.miembrosAsignados.length === 0 ? (
+              <p className="muted">Aún no hay miembros asignados.</p>
+            ) : (
+              <div className="mini-team-list">
+                {detalle.miembrosAsignados.slice(0, 4).map((miembro) => (
+                  <div key={miembro.id}>
+                    <span className="avatar avatar-pro">{obtenerInicialesAsignacion(miembro)}</span>
+                    <div>
+                      <strong>{miembro.nombreMiembro}</strong>
+                      <small>{formatearRol(miembro.rolMiembro)}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+        </section>
+      )}
+
+      {tabActiva === "tareas" && (
+        <section className={puedeGestionarProyecto ? "tasks-workspace" : "tasks-workspace tasks-workspace-full"}>
+          {puedeGestionarProyecto && (
+            <aside className="panel work-form-panel task-create-panel">
+              <h2>Nueva tarea</h2>
+              <form className="form-grid single" onSubmit={crearTarea}>
+              <FormField label="Descripción">
+                <textarea name="descripcion" value={formTarea.descripcion} onChange={actualizarCampoTarea} maxLength="500" rows="4" required />
+              </FormField>
+
+              <FormField label="Responsable">
+                <input name="responsable" value={formTarea.responsable} onChange={actualizarCampoTarea} maxLength="120" required />
+              </FormField>
+
+              <FormField label="Estado">
+                <select name="estado" value={formTarea.estado} onChange={actualizarCampoTarea}>
+                  <option value="PENDING">Pendiente</option>
+                  <option value="IN_PROGRESS">En progreso</option>
+                  <option value="DONE">Terminada</option>
+                </select>
+              </FormField>
+
+              <FormField label="Inicio">
+                <input type="date" name="fechaInicio" value={formTarea.fechaInicio} onChange={actualizarCampoTarea} />
+              </FormField>
+
+              <FormField label="Fin estimado">
+                <input type="date" name="fechaFinEstimada" value={formTarea.fechaFinEstimada} onChange={actualizarCampoTarea} />
+              </FormField>
+
+                <button className="button" type="submit" disabled={guardando}>
+                  {guardando ? "Guardando..." : "Crear tarea"}
+                </button>
+              </form>
+            </aside>
+          )}
+
+          <div className="task-kanban">
+            {tareasPorEstado.map((columna) => (
+              <section className="kanban-column" key={columna.estado}>
+                <div className="kanban-column-head">
+                  <h2>{columna.titulo}</h2>
+                  <span>{columna.tareas.length}</span>
+                </div>
+
+                {columna.tareas.length === 0 ? (
+                  <p className="muted empty-column">Sin tareas.</p>
+                ) : (
+                  columna.tareas.map((tarea) => (
+                    <article className="task-card work-task-card" key={tarea.id}>
+                      <div className="task-card-head">
+                        <span className={`status status-${tarea.estado}`}>{formatearEstadoTarea(tarea.estado)}</span>
+                        <small>{obtenerIndicadorFecha(tarea)}</small>
+                      </div>
+                      <h3>{tarea.descripcion}</h3>
+                      <p><strong>Responsable:</strong> {tarea.responsable || "Sin responsable"}</p>
+                      <div className="date-row date-row-pro">
+                        <div>
+                          <small>Inicio</small>
+                          <strong>{formatearFecha(tarea.fechaInicio)}</strong>
+                        </div>
+                        <div>
+                          <small>Fin</small>
+                          <strong>{formatearFecha(tarea.fechaFinEstimada)}</strong>
+                        </div>
+                      </div>
+                      <div className="inline-actions task-actions">
+                        <button type="button" onClick={() => cambiarEstadoTarea(tarea.id, "IN_PROGRESS")} disabled={tarea.estado !== "PENDING"}>Iniciar</button>
+                        <button type="button" onClick={() => cambiarEstadoTarea(tarea.id, "DONE")} disabled={tarea.estado === "DONE"}>Finalizar</button>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </section>
+            ))}
           </div>
-        </form>
-      </section>
+        </section>
+      )}
 
-      <section className="panel">
-        <h2>Asignar miembro al proyecto</h2>
-        <form className="form-row" onSubmit={asignarMiembro}>
-          <label>
-            Miembro
-            <select
-              value={idMiembroAsignar}
-              onChange={(event) => setIdMiembroAsignar(event.target.value)}
-              required
-            >
-              <option value="">Seleccionar miembro</option>
-              {miembros.map((miembro) => (
-                <option key={miembro.id} value={miembro.id}>
-                  {miembro.nombres} {miembro.apellidoPaterno} {miembro.apellidoMaterno} - {miembro.rol}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="button" type="submit" disabled={guardando || !idMiembroAsignar}>
-            Asignar
-          </button>
-        </form>
-      </section>
+      {tabActiva === "equipo" && (
+        <section className={puedeGestionarProyecto ? "work-detail-grid team-work-grid" : "work-detail-grid team-work-grid team-work-grid-readonly"}>
+          {puedeGestionarProyecto && (
+            <article className="panel work-form-panel">
+              <h2>Asignar miembro</h2>
+              <form className="form-grid single" onSubmit={asignarMiembro}>
+              <FormField label="Miembro existente">
+                <select value={idMiembroAsignar} onChange={(event) => setIdMiembroAsignar(event.target.value)} required>
+                  <option value="">Seleccionar miembro</option>
+                  {miembrosDisponibles.map((miembro) => (
+                    <option key={miembro.id} value={miembro.id}>
+                      {obtenerNombreCompletoMiembro(miembro)} - {formatearRol(miembro.rol)}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+                <button className="button" type="submit" disabled={guardando || !idMiembroAsignar}>
+                  Asignar al proyecto
+                </button>
+              </form>
+            </article>
+          )}
 
-      <section>
-        <h2>Miembros asignados</h2>
-
-        {detalle.miembrosAsignados.length === 0 ? (
-          <p>No hay miembros asignados.</p>
-        ) : (
-          detalle.miembrosAsignados.map((miembro) => (
-            <div className="card" key={miembro.id}>
-              <h3>{miembro.nombreMiembro}</h3>
-              <p>
-                <strong>Rol:</strong> {miembro.rolMiembro}
-              </p>
-            </div>
-          ))
-        )}
-      </section>
+          <section className="assigned-team-grid">
+            {detalle.miembrosAsignados.length === 0 ? (
+              <article className="panel empty-state">
+                <h2>No hay miembros asignados</h2>
+                <p>Asigna integrantes para distribuir responsabilidades del proyecto.</p>
+              </article>
+            ) : (
+              detalle.miembrosAsignados.map((miembro) => (
+                <article className="team-card team-card-pro" key={miembro.id}>
+                  <div className="avatar avatar-pro">{obtenerInicialesAsignacion(miembro)}</div>
+                  <div className="team-card-body">
+                    <div className="team-card-heading">
+                      <h3>{miembro.nombreMiembro}</h3>
+                    </div>
+                    <span className="role-pill role-pill-pro">{formatearRol(miembro.rolMiembro)}</span>
+                  </div>
+                </article>
+              ))
+            )}
+          </section>
+        </section>
+      )}
     </main>
+  );
+}
+
+function TaskResume({ label, value }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function FormField({ label, children }) {
+  return (
+    <label className="form-field-pro">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -406,7 +408,7 @@ function formatearEstadoProyecto(estado) {
     CANCELLED: "Cancelado",
   };
 
-  return estados[estado] || estado;
+  return estados[estado] || estado || "Sin estado";
 }
 
 function formatearEstadoTarea(estado) {
@@ -416,7 +418,86 @@ function formatearEstadoTarea(estado) {
     DONE: "Terminada",
   };
 
-  return estados[estado] || estado;
+  return estados[estado] || estado || "Sin estado";
+}
+
+function formatearRol(rol) {
+  const roles = {
+    ADMIN: "Administrador",
+    PROJECT_MANAGER: "Project Manager",
+    SCRUM_MASTER: "Scrum Master",
+    DEVELOPER: "Developer",
+    QA: "QA",
+    DEVOPS: "DevOps",
+    UI_UX: "UI/UX",
+  };
+
+  return roles[rol] || rol || "Sin rol";
+}
+
+function formatearFecha(fecha) {
+  if (!fecha) {
+    return "Sin fecha";
+  }
+
+  return new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CL");
+}
+
+function formatearPorcentaje(valor) {
+  return `${Number(valor || 0).toFixed(0)}%`;
+}
+
+function limitarPorcentaje(valor) {
+  return Math.min(100, Math.max(0, Number(valor || 0)));
+}
+
+function obtenerIndicadorFecha(item) {
+  if (!item.fechaFinEstimada) {
+    return "Sin fecha límite";
+  }
+
+  if (item.estado === "COMPLETED" || item.estado === "DONE") {
+    return "Finalizado";
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const fechaFin = new Date(`${item.fechaFinEstimada}T00:00:00`);
+
+  if (fechaFin < hoy) {
+    return "Vencido";
+  }
+
+  const diferenciaDias = Math.ceil((fechaFin - hoy) / (1000 * 60 * 60 * 24));
+
+  if (diferenciaDias === 0) {
+    return "Vence hoy";
+  }
+
+  if (diferenciaDias <= 7) {
+    return `Vence en ${diferenciaDias} días`;
+  }
+
+  return "En plazo";
+}
+
+function obtenerInicialesAsignacion(miembro) {
+  const nombre = miembro.nombreMiembro || "";
+
+  return (
+    nombre
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((parte) => parte[0]?.toUpperCase())
+      .join("") || "IT"
+  );
+}
+
+function obtenerNombreCompletoMiembro(miembro) {
+  return [miembro.nombres, miembro.apellidoPaterno, miembro.apellidoMaterno]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export default ProyectoDetallePage;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import bffApi from "../api/bffApi";
 
 const proyectoInicial = {
@@ -34,6 +34,25 @@ const filtrosEstado = [
   { value: "CANCELLED", label: "Cancelados" },
 ];
 
+const filtrosRolUsuario = [
+  { value: "TODOS", label: "Todos" },
+  { value: "ADMIN", label: "Administradores" },
+  { value: "PROJECT_MANAGER", label: "Project Managers" },
+  { value: "SCRUM_MASTER", label: "Scrum Masters" },
+  { value: "DEVELOPER", label: "Developers" },
+  { value: "QA", label: "QA" },
+  { value: "DEVOPS", label: "DevOps" },
+  { value: "UI_UX", label: "UI/UX" },
+];
+
+const filtrosEstadoUsuario = [
+  { value: "TODOS", label: "Todos" },
+  { value: "ACTIVE", label: "Activos" },
+  { value: "INACTIVE", label: "Inactivos" },
+  { value: "PENDING", label: "Pendientes" },
+  { value: "BLOCKED", label: "Bloqueados" },
+];
+
 function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState(null);
   const [proyectos, setProyectos] = useState([]);
@@ -48,17 +67,16 @@ function AdminDashboardPage() {
   const [vistaDetalle, setVistaDetalle] = useState("resumen");
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [busquedaUsuarios, setBusquedaUsuarios] = useState("");
+  const [filtroRolUsuario, setFiltroRolUsuario] = useState("TODOS");
+  const [filtroEstadoUsuario, setFiltroEstadoUsuario] = useState("TODOS");
   const [tabActiva, setTabActiva] = useState("resumen");
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
-  useEffect(() => {
-    cargarVistaAdmin();
-  }, []);
-
-  const cargarVistaAdmin = async () => {
+  const cargarVistaAdmin = useCallback(async () => {
     setCargando(true);
     setError("");
 
@@ -83,7 +101,11 @@ function AdminDashboardPage() {
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(cargarVistaAdmin);
+  }, [cargarVistaAdmin]);
 
   const resumenEstados = useMemo(() => {
     const total = dashboard?.totalProyectos ?? proyectos.length;
@@ -138,9 +160,38 @@ function AdminDashboardPage() {
       .slice(0, 5);
   }, [proyectos]);
 
-  const proyectosEnCurso = useMemo(() => {
-    return proyectos.filter((proyecto) => proyecto.estado === "IN_PROGRESS").slice(0, 5);
-  }, [proyectos]);
+  const usuariosFiltrados = useMemo(() => {
+    const texto = busquedaUsuarios.trim().toLowerCase();
+
+    return miembros.filter((miembro) => {
+      const estadoNormalizado = normalizarEstadoMiembro(miembro.estado);
+      const coincideRol =
+        filtroRolUsuario === "TODOS" || miembro.rol === filtroRolUsuario;
+      const coincideEstado =
+        filtroEstadoUsuario === "TODOS" || estadoNormalizado === filtroEstadoUsuario;
+      const coincideTexto =
+        !texto ||
+        [
+          obtenerNombreCompletoMiembro(miembro),
+          miembro.email,
+          formatearRol(miembro.rol),
+          formatearEstadoMiembro(miembro.estado),
+        ]
+          .filter(Boolean)
+          .some((valor) => valor.toLowerCase().includes(texto));
+
+      return coincideRol && coincideEstado && coincideTexto;
+    });
+  }, [busquedaUsuarios, filtroEstadoUsuario, filtroRolUsuario, miembros]);
+
+  const resumenUsuarios = useMemo(() => {
+    return {
+      total: miembros.length,
+      activos: miembros.filter((miembro) => normalizarEstadoMiembro(miembro.estado) === "ACTIVE").length,
+      administradores: miembros.filter((miembro) => miembro.rol === "ADMIN").length,
+      roles: new Set(miembros.map((miembro) => miembro.rol).filter(Boolean)).size,
+    };
+  }, [miembros]);
 
   const proyectoValido = useMemo(() => {
     return (
@@ -376,7 +427,7 @@ function AdminDashboardPage() {
           <SidebarButton active={tabActiva === "resumen"} onClick={() => setTabActiva("resumen")} label="Resumen" icon="📊" />
           <SidebarButton active={tabActiva === "proyectos"} onClick={() => setTabActiva("proyectos")} label="Proyectos" icon="📁" />
           <SidebarButton active={tabActiva === "crear-proyecto"} onClick={() => setTabActiva("crear-proyecto")} label="Crear proyecto" icon="➕" />
-          <SidebarButton active={tabActiva === "equipo"} onClick={() => setTabActiva("equipo")} label="Equipo" icon="👥" />
+          <SidebarButton active={tabActiva === "equipo"} onClick={() => setTabActiva("equipo")} label="Usuarios" icon="👥" />
           <SidebarButton active={tabActiva === "crear-miembro"} onClick={() => setTabActiva("crear-miembro")} label="Registrar miembro" icon="🧩" />
           {detalleProyecto && (
             <SidebarButton active={tabActiva === "detalle-proyecto"} onClick={() => setTabActiva("detalle-proyecto")} label="Proyecto activo" icon="🛠️" />
@@ -473,7 +524,7 @@ function AdminDashboardPage() {
                       <button type="button" onClick={() => setTabActiva("crear-proyecto")}>Crear nuevo proyecto</button>
                       <button type="button" onClick={() => setTabActiva("crear-miembro")}>Registrar miembro</button>
                       <button type="button" onClick={() => setTabActiva("proyectos")}>Revisar proyectos</button>
-                      <button type="button" onClick={() => setTabActiva("equipo")}>Ver equipo</button>
+                      <button type="button" onClick={() => setTabActiva("equipo")}>Ver usuarios</button>
                     </div>
                   </section>
 
@@ -865,34 +916,94 @@ function AdminDashboardPage() {
               <section className="admin-section">
                 <div className="section-toolbar section-toolbar-pro">
                   <div>
-                    <p className="eyebrow">Talento interno</p>
-                    <h2>Equipo</h2>
-                    <p>Miembros registrados para asignación y seguimiento de proyectos.</p>
+                    <p className="eyebrow">Administración de acceso</p>
+                    <h2>Usuarios</h2>
+                    <p>Consulta perfiles, roles y estado operativo de los miembros registrados.</p>
                   </div>
 
-                  <button className="button" type="button" onClick={() => setTabActiva("crear-miembro")}>Nuevo miembro</button>
+                  <button className="button" type="button" onClick={() => setTabActiva("crear-miembro")}>Nuevo usuario</button>
+                </div>
+
+                <div className="metrics-grid admin-metrics metrics-pro users-metrics">
+                  <Metric title="Usuarios" value={resumenUsuarios.total} helper="Cuentas registradas" />
+                  <Metric title="Activos" value={resumenUsuarios.activos} helper="Disponibles para proyectos" variant="success" />
+                  <Metric title="Administradores" value={resumenUsuarios.administradores} helper="Con permisos de gestión" variant="warning" />
+                  <Metric title="Roles cubiertos" value={resumenUsuarios.roles} helper="Especialidades distintas" variant="info" />
+                </div>
+
+                <div className="filters-panel users-filters-panel">
+                  <label className="search-field">
+                    Buscar usuario
+                    <input placeholder="Nombre, correo, rol o estado..." value={busquedaUsuarios} onChange={(event) => setBusquedaUsuarios(event.target.value)} />
+                  </label>
+
+                  <label className="compact-select-field">
+                    Rol
+                    <select value={filtroRolUsuario} onChange={(event) => setFiltroRolUsuario(event.target.value)}>
+                      {filtrosRolUsuario.map((filtro) => (
+                        <option key={filtro.value} value={filtro.value}>{filtro.label}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div className="filter-pills user-state-pills" aria-label="Filtro por estado de usuario">
+                    {filtrosEstadoUsuario.map((filtro) => (
+                      <button
+                        className={filtroEstadoUsuario === filtro.value ? "filter-pill active" : "filter-pill"}
+                        key={filtro.value}
+                        type="button"
+                        onClick={() => setFiltroEstadoUsuario(filtro.value)}
+                      >
+                        {filtro.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {miembros.length === 0 ? (
                   <section className="panel admin-panel empty-state">
-                    <h3>No hay miembros registrados</h3>
-                    <p>Registra el primer integrante para comenzar a asignarlo a proyectos.</p>
+                    <h3>No hay usuarios registrados</h3>
+                    <p>Registra el primer usuario para comenzar a asignarlo a proyectos.</p>
+                  </section>
+                ) : usuariosFiltrados.length === 0 ? (
+                  <section className="panel admin-panel empty-state">
+                    <h3>No se encontraron usuarios</h3>
+                    <p>Prueba con otra búsqueda o ajusta los filtros aplicados.</p>
                   </section>
                 ) : (
-                  <div className="team-grid team-grid-pro">
-                    {miembros.map((miembro) => (
-                      <article className="team-card team-card-pro" key={miembro.id}>
-                        <div className="avatar avatar-pro">{obtenerIniciales(miembro)}</div>
+                  <div className="users-grid">
+                    {usuariosFiltrados.map((miembro) => (
+                      <article className="user-card" key={miembro.id}>
+                        <div className="user-card-main">
+                          <div className="avatar avatar-pro user-avatar">{obtenerIniciales(miembro)}</div>
 
-                        <div className="team-card-body">
-                          <div className="team-card-heading">
-                            <h3>{obtenerNombreCompletoMiembro(miembro)}</h3>
-                            {miembro.estado && <span className={`member-status member-status-${miembro.estado}`}>{formatearEstadoMiembro(miembro.estado)}</span>}
+                          <div className="team-card-body">
+                            <div className="team-card-heading">
+                              <h3>{obtenerNombreCompletoMiembro(miembro)}</h3>
+                              {miembro.estado && <span className={`member-status member-status-${miembro.estado}`}>{formatearEstadoMiembro(miembro.estado)}</span>}
+                            </div>
+
+                            <p className="user-email">{miembro.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="user-card-meta">
+                          <div>
+                            <small>Rol</small>
+                            <strong>{formatearRol(miembro.rol)}</strong>
                           </div>
 
-                          <p>{miembro.email}</p>
+                          <div>
+                            <small>ID usuario</small>
+                            <strong>#{miembro.id}</strong>
+                          </div>
+                        </div>
 
+                        <div className="user-card-footer">
                           <span className="role-pill role-pill-pro">{formatearRol(miembro.rol)}</span>
+                          <button className="button ghost user-card-action" type="button" onClick={() => setTabActiva("crear-miembro")}>
+                            Crear similar
+                          </button>
                         </div>
                       </article>
                     ))}
@@ -1049,6 +1160,21 @@ function formatearEstadoMiembro(estado) {
   };
 
   return estados[estado] || estado;
+}
+
+function normalizarEstadoMiembro(estado) {
+  const estados = {
+    ACTIVO: "ACTIVE",
+    ACTIVE: "ACTIVE",
+    INACTIVO: "INACTIVE",
+    INACTIVE: "INACTIVE",
+    PENDIENTE: "PENDING",
+    PENDING: "PENDING",
+    BLOQUEADO: "BLOCKED",
+    BLOCKED: "BLOCKED",
+  };
+
+  return estados[estado] || estado || "";
 }
 
 function formatearRol(rol) {

@@ -27,7 +27,7 @@ function LoginPage({ autenticado, onLogin }) {
     try {
       const response = await authApi.post("/login", credenciales);
       onLogin(response.data);
-    } catch (error) {
+    } catch {
       setError("Usuario o contraseña inválidos.");
     } finally {
       setCargando(false);
