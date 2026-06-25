@@ -29,8 +29,13 @@ public class JwtService {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationMs);
 
+        String rolePrincipal = roles == null || roles.isEmpty()
+                ? null
+                : roles.get(0);
+
         return Jwts.builder()
                 .setSubject(username)
+                .claim("role", rolePrincipal)
                 .claim("roles", roles)
                 .setIssuedAt(now)
                 .setExpiration(expiration)

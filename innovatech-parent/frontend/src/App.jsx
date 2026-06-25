@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, Navigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import ProyectosPage from "./pages/ProyectosPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import ProyectoDetallePage from "./pages/ProyectoDetallePage";
 import "./App.css";
 
@@ -16,11 +17,13 @@ function App() {
   });
 
   const autenticado = useMemo(() => Boolean(sesion?.token), [sesion]);
+  const esAdmin = sesion?.roles?.includes("ADMIN");
 
   const iniciarSesion = (loginResponse) => {
     localStorage.setItem("innovatech_token", loginResponse.accessToken);
     localStorage.setItem("innovatech_username", loginResponse.username);
     localStorage.setItem("innovatech_roles", JSON.stringify(loginResponse.roles));
+
     setSesion({
       token: loginResponse.accessToken,
       username: loginResponse.username,
@@ -38,10 +41,24 @@ function App() {
   return (
     <BrowserRouter>
       <nav className="navbar">
-        <Link to="/">Innovatech</Link>
+        <Link to={esAdmin ? "/" : "/proyectos"}>Innovatech</Link>
+
         {autenticado && (
           <div className="session">
+            {esAdmin && (
+              <Link className="nav-link" to="/">
+                Admin
+              </Link>
+            )}
+
+            {!esAdmin && (
+              <Link className="nav-link" to="/proyectos">
+                Proyectos
+              </Link>
+            )}
+
             <span>{sesion.username}</span>
+
             <button type="button" onClick={cerrarSesion}>
               Salir
             </button>
@@ -52,23 +69,59 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={<LoginPage autenticado={autenticado} onLogin={iniciarSesion} />}
+          element={
+            <LoginPage autenticado={autenticado} onLogin={iniciarSesion} />
+          }
         />
+
         <Route
           path="/"
           element={
-            <ProtectedRoute autenticado={autenticado}>
-              <ProyectosPage />
+            <ProtectedRoute
+              autenticado={autenticado}
+              roles={sesion?.roles || []}
+              rolesPermitidos={["ADMIN"]}
+            >
+              <AdminDashboardPage />
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/proyectos"
+          element={
+            esAdmin ? (
+              <Navigate to="/" replace />
+            ) : (
+              <ProtectedRoute
+                autenticado={autenticado}
+                roles={sesion?.roles || []}
+              >
+                <ProyectosPage />
+              </ProtectedRoute>
+            )
+          }
+        />
+
         <Route
           path="/proyectos/:idProyecto"
           element={
-            <ProtectedRoute autenticado={autenticado}>
-              <ProyectoDetallePage />
-            </ProtectedRoute>
+            esAdmin ? (
+              <Navigate to="/" replace />
+            ) : (
+              <ProtectedRoute
+                autenticado={autenticado}
+                roles={sesion?.roles || []}
+              >
+                <ProyectoDetallePage />
+              </ProtectedRoute>
+            )
           }
+        />
+
+        <Route
+          path="*"
+          element={<Navigate to={esAdmin ? "/" : "/proyectos"} replace />}
         />
       </Routes>
     </BrowserRouter>
