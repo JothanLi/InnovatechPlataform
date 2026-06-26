@@ -3,8 +3,8 @@ package com.innovatech.bff_service.facade;
 import com.innovatech.bff_service.client.EquipoClient;
 import com.innovatech.bff_service.client.ProyectoClient;
 import com.innovatech.bff_service.client.TareaClient;
-import com.innovatech.bff_service.dto.AsignacionProyectoResponse;
 import com.innovatech.bff_service.dto.AsignacionProyectoRequest;
+import com.innovatech.bff_service.dto.AsignacionProyectoResponse;
 import com.innovatech.bff_service.dto.AvanceProyectoResponse;
 import com.innovatech.bff_service.dto.DashboardResumenResponse;
 import com.innovatech.bff_service.dto.MiembroEquipoRequest;
@@ -47,7 +47,13 @@ public class InnovatechBffFacade {
 
     public List<ProyectoResponseDTO> listarProyectos() {
         CurrentUser user = currentUserService.getCurrentUser();
-        return filtrarProyectosVisibles(proyectoClient.listarProyectos(), user);
+
+        try {
+            return filtrarProyectosVisibles(proyectoClient.listarProyectos(), user);
+        } catch (Exception exception) {
+            System.err.println("No se pudieron listar proyectos desde BFF: " + exception.getMessage());
+            return List.of();
+        }
     }
 
     public ProyectoResponseDTO crearProyecto(ProyectoRequestDTO request) {
@@ -60,8 +66,10 @@ public class InnovatechBffFacade {
         requireProyectoVisible(idProyecto, user);
 
         ProyectoResponseDTO proyecto = proyectoClient.obtenerProyectoPorId(idProyecto);
-        List<TareaResponseDTO> tareas = tareaClient.listarTareasPorProyecto(idProyecto);
-        List<AsignacionProyectoResponse> miembros = equipoClient.listarMiembrosPorProyecto(idProyecto);
+
+        List<TareaResponseDTO> tareas = obtenerTareasSegurasPorProyecto(idProyecto);
+        List<AsignacionProyectoResponse> miembros = obtenerAsignacionesSegurasPorProyecto(idProyecto);
+
         AvanceProyectoResponse avance = calcularAvance(proyecto, tareas);
 
         return ProyectoDetalleResponse.builder()
@@ -85,17 +93,21 @@ public class InnovatechBffFacade {
     }
 
     public TareaResponseDTO cambiarEstadoTarea(Long idTarea, String estado) {
+        String estadoNormalizado = normalizarEstadoTarea(estado);
+
         return tareaClient.cambiarEstadoTarea(
                 idTarea,
-                new TareaClient.CambioEstadoTareaRequest(estado)
+                new TareaClient.CambioEstadoTareaRequest(estadoNormalizado)
         );
     }
 
     public List<MiembroEquipoResponse> listarMiembros() {
         CurrentUser user = currentUserService.getCurrentUser();
+
         if (!user.canManageProjectWork()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permisos para listar usuarios");
         }
+
         return equipoClient.listarMiembros();
     }
 
@@ -118,24 +130,26 @@ public class InnovatechBffFacade {
 
     public AvanceProyectoResponse obtenerAvanceProyecto(Long idProyecto) {
         requireProyectoVisible(idProyecto, currentUserService.getCurrentUser());
+
         ProyectoResponseDTO proyecto = proyectoClient.obtenerProyectoPorId(idProyecto);
-        List<TareaResponseDTO> tareas = tareaClient.listarTareasPorProyecto(idProyecto);
+        List<TareaResponseDTO> tareas = obtenerTareasSegurasPorProyecto(idProyecto);
 
         return calcularAvance(proyecto, tareas);
     }
 
     public DashboardResumenResponse obtenerDashboardResumen() {
         CurrentUser user = currentUserService.getCurrentUser();
+
         List<ProyectoResponseDTO> proyectos;
 
         try {
             proyectos = filtrarProyectosVisibles(proyectoClient.listarProyectos(), user);
-
-            if (proyectos == null) {
-                proyectos = new ArrayList<>();
-            }
         } catch (Exception exception) {
             System.err.println("No se pudieron cargar los proyectos para el dashboard: " + exception.getMessage());
+            proyectos = new ArrayList<>();
+        }
+
+        if (proyectos == null) {
             proyectos = new ArrayList<>();
         }
 
@@ -156,25 +170,11 @@ public class InnovatechBffFacade {
 
             Long idProyecto = proyecto.getId();
 
-            try {
-                List<TareaResponseDTO> tareasProyecto = tareaClient.listarTareasPorProyecto(idProyecto);
+            List<TareaResponseDTO> tareasProyecto = obtenerTareasSegurasPorProyecto(idProyecto);
+            todasLasTareas.addAll(tareasProyecto);
 
-                if (tareasProyecto != null) {
-                    todasLasTareas.addAll(tareasProyecto);
-                }
-            } catch (Exception exception) {
-                System.err.println("No se pudieron cargar tareas del proyecto " + idProyecto + ": " + exception.getMessage());
-            }
-
-            try {
-                List<AsignacionProyectoResponse> asignacionesProyecto = equipoClient.listarMiembrosPorProyecto(idProyecto);
-
-                if (asignacionesProyecto != null) {
-                    todasLasAsignaciones.addAll(asignacionesProyecto);
-                }
-            } catch (Exception exception) {
-                System.err.println("No se pudieron cargar asignaciones del proyecto " + idProyecto + ": " + exception.getMessage());
-            }
+            List<AsignacionProyectoResponse> asignacionesProyecto = obtenerAsignacionesSegurasPorProyecto(idProyecto);
+            todasLasAsignaciones.addAll(asignacionesProyecto);
         }
 
         int totalTareas = todasLasTareas.size();
@@ -183,6 +183,7 @@ public class InnovatechBffFacade {
         int tareasTerminadas = contarTareasPorEstado(todasLasTareas, "DONE");
 
         int totalMiembrosAsignados = (int) todasLasAsignaciones.stream()
+                .filter(asignacion -> asignacion != null)
                 .map(AsignacionProyectoResponse::getIdMiembro)
                 .filter(idMiembro -> idMiembro != null)
                 .distinct()
@@ -206,10 +207,133 @@ public class InnovatechBffFacade {
                 .porcentajeAvanceGeneral(redondearDosDecimales(porcentajeAvanceGeneral))
                 .build();
     }
+
+    private List<ProyectoResponseDTO> filtrarProyectosVisibles(
+            List<ProyectoResponseDTO> proyectos,
+            CurrentUser user
+    ) {
+        if (proyectos == null || proyectos.isEmpty()) {
+            return List.of();
+        }
+
+        if (user.isAdmin()) {
+            return proyectos;
+        }
+
+        Set<Long> idsAsignadosTemp;
+
+        try {
+            idsAsignadosTemp = equipoClient.listarMiembros()
+                    .stream()
+                    .filter(miembro -> miembro != null)
+                    .filter(miembro -> miembro.getEmail() != null)
+                    .filter(miembro -> user.email().equalsIgnoreCase(miembro.getEmail()))
+                    .findFirst()
+                    .map(miembro -> obtenerIdsProyectosAsignados(miembro.getId()))
+                    .orElse(Set.of());
+        } catch (Exception exception) {
+            System.err.println(
+                    "No se pudieron resolver proyectos visibles para "
+                            + user.email()
+                            + ": "
+                            + exception.getMessage()
+            );
+            idsAsignadosTemp = Set.of();
+        }
+
+        final Set<Long> proyectosAsignados = idsAsignadosTemp;
+
+        return proyectos.stream()
+                .filter(proyecto -> proyecto != null && proyecto.getId() != null)
+                .filter(proyecto -> proyectosAsignados.contains(proyecto.getId()))
+                .toList();
+    }
+
+    private Set<Long> obtenerIdsProyectosAsignados(Long idMiembro) {
+        if (idMiembro == null) {
+            return Set.of();
+        }
+
+        List<ProyectoResponseDTO> proyectos;
+
+        try {
+            proyectos = proyectoClient.listarProyectos();
+        } catch (Exception exception) {
+            System.err.println("No se pudieron cargar proyectos para resolver asignaciones: " + exception.getMessage());
+            return Set.of();
+        }
+
+        if (proyectos == null || proyectos.isEmpty()) {
+            return Set.of();
+        }
+
+        return proyectos.stream()
+                .filter(proyecto -> proyecto != null && proyecto.getId() != null)
+                .flatMap(proyecto -> {
+                    try {
+                        List<AsignacionProyectoResponse> asignaciones =
+                                equipoClient.listarMiembrosPorProyecto(proyecto.getId());
+
+                        if (asignaciones == null) {
+                            return java.util.stream.Stream.empty();
+                        }
+
+                        return asignaciones.stream();
+                    } catch (Exception exception) {
+                        System.err.println(
+                                "No se pudieron cargar asignaciones del proyecto "
+                                        + proyecto.getId()
+                                        + ": "
+                                        + exception.getMessage()
+                        );
+                        return java.util.stream.Stream.empty();
+                    }
+                })
+                .filter(asignacion -> asignacion != null)
+                .filter(asignacion -> idMiembro.equals(asignacion.getIdMiembro()))
+                .map(AsignacionProyectoResponse::getIdProyecto)
+                .filter(idProyecto -> idProyecto != null)
+                .collect(Collectors.toSet());
+    }
+
+    private List<TareaResponseDTO> obtenerTareasSegurasPorProyecto(Long idProyecto) {
+        try {
+            List<TareaResponseDTO> tareas = tareaClient.listarTareasPorProyecto(idProyecto);
+            return tareas == null ? List.of() : tareas;
+        } catch (Exception exception) {
+            System.err.println(
+                    "No se pudieron cargar tareas del proyecto "
+                            + idProyecto
+                            + ": "
+                            + exception.getMessage()
+            );
+            return List.of();
+        }
+    }
+
+    private List<AsignacionProyectoResponse> obtenerAsignacionesSegurasPorProyecto(Long idProyecto) {
+        try {
+            List<AsignacionProyectoResponse> asignaciones = equipoClient.listarMiembrosPorProyecto(idProyecto);
+            return asignaciones == null ? List.of() : asignaciones;
+        } catch (Exception exception) {
+            System.err.println(
+                    "No se pudieron cargar asignaciones del proyecto "
+                            + idProyecto
+                            + ": "
+                            + exception.getMessage()
+            );
+            return List.of();
+        }
+    }
+
     private AvanceProyectoResponse calcularAvance(
             ProyectoResponseDTO proyecto,
             List<TareaResponseDTO> tareas
     ) {
+        if (tareas == null) {
+            tareas = List.of();
+        }
+
         int total = tareas.size();
 
         int pendientes = contarTareasPorEstado(tareas, "PENDING");
@@ -218,9 +342,12 @@ public class InnovatechBffFacade {
 
         double porcentajeAvance = total == 0 ? 0 : (terminadas * 100.0) / total;
 
+        Long idProyecto = proyecto == null ? null : proyecto.getId();
+        String nombreProyecto = proyecto == null ? "" : proyecto.getNombre();
+
         return AvanceProyectoResponse.builder()
-                .idProyecto(proyecto.getId())
-                .nombreProyecto(proyecto.getNombre())
+                .idProyecto(idProyecto)
+                .nombreProyecto(nombreProyecto)
                 .totalTareas(total)
                 .tareasPendientes(pendientes)
                 .tareasEnProgreso(enProgreso)
@@ -233,7 +360,13 @@ public class InnovatechBffFacade {
             List<ProyectoResponseDTO> proyectos,
             String estado
     ) {
+        if (proyectos == null || estado == null) {
+            return 0;
+        }
+
         return (int) proyectos.stream()
+                .filter(proyecto -> proyecto != null)
+                .filter(proyecto -> proyecto.getEstado() != null)
                 .filter(proyecto -> estado.equalsIgnoreCase(proyecto.getEstado()))
                 .count();
     }
@@ -242,7 +375,13 @@ public class InnovatechBffFacade {
             List<TareaResponseDTO> tareas,
             String estado
     ) {
+        if (tareas == null || estado == null) {
+            return 0;
+        }
+
         return (int) tareas.stream()
+                .filter(tarea -> tarea != null)
+                .filter(tarea -> tarea.getEstado() != null)
                 .filter(tarea -> estado.equalsIgnoreCase(tarea.getEstado()))
                 .count();
     }
@@ -251,46 +390,55 @@ public class InnovatechBffFacade {
         return Math.round(valor * 100.0) / 100.0;
     }
 
-    private List<ProyectoResponseDTO> filtrarProyectosVisibles(
-            List<ProyectoResponseDTO> proyectos,
-            CurrentUser user
-    ) {
-        if (user.isAdmin()) {
-            return proyectos;
+    private String normalizarEstadoTarea(String estado) {
+        if (estado == null || estado.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El estado de la tarea es obligatorio");
         }
 
-        Set<Long> proyectosAsignados = equipoClient.listarMiembros()
-                .stream()
-                .filter(miembro -> user.email().equalsIgnoreCase(miembro.getEmail()))
-                .findFirst()
-                .map(miembro -> obtenerIdsProyectosAsignados(miembro.getId()))
-                .orElse(Set.of());
+        String estadoNormalizado = estado.trim().toUpperCase();
 
-        return proyectos.stream()
-                .filter(proyecto -> proyectosAsignados.contains(proyecto.getId()))
-                .toList();
-    }
+        if (!Set.of("PENDING", "IN_PROGRESS", "DONE").contains(estadoNormalizado)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Estado de tarea inválido. Valores permitidos: PENDING, IN_PROGRESS, DONE"
+            );
+        }
 
-    private Set<Long> obtenerIdsProyectosAsignados(Long idMiembro) {
-        return proyectoClient.listarProyectos()
-                .stream()
-                .flatMap(proyecto -> equipoClient.listarMiembrosPorProyecto(proyecto.getId()).stream())
-                .filter(asignacion -> idMiembro.equals(asignacion.getIdMiembro()))
-                .map(AsignacionProyectoResponse::getIdProyecto)
-                .collect(Collectors.toSet());
+        return estadoNormalizado;
     }
 
     private void requireProyectoVisible(Long idProyecto, CurrentUser user) {
+        if (idProyecto == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id del proyecto es obligatorio");
+        }
+
         if (user.isAdmin()) {
             return;
         }
 
-        boolean asignado = equipoClient.listarMiembrosPorProyecto(idProyecto)
-                .stream()
-                .anyMatch(asignacion -> user.id().equals(asignacion.getIdMiembro()));
+        try {
+            boolean asignado = equipoClient.listarMiembrosPorProyecto(idProyecto)
+                    .stream()
+                    .filter(asignacion -> asignacion != null)
+                    .anyMatch(asignacion -> user.id().equals(asignacion.getIdMiembro()));
 
-        if (!asignado) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes acceso a este proyecto");
+            if (!asignado) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes acceso a este proyecto");
+            }
+        } catch (ResponseStatusException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            System.err.println(
+                    "No se pudo validar visibilidad del proyecto "
+                            + idProyecto
+                            + ": "
+                            + exception.getMessage()
+            );
+
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "No fue posible validar el acceso al proyecto"
+            );
         }
     }
 
@@ -311,7 +459,9 @@ public class InnovatechBffFacade {
     }
 
     private boolean esResponsableDeTarea(TareaResponseDTO tarea, CurrentUser user) {
-        return normalizarTexto(tarea.getResponsable()).equals(normalizarTexto(user.displayName()));
+        return tarea != null
+                && user != null
+                && normalizarTexto(tarea.getResponsable()).equals(normalizarTexto(user.displayName()));
     }
 
     private String normalizarTexto(String valor) {

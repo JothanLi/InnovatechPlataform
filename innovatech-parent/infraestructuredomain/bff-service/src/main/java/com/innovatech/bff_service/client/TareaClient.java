@@ -22,7 +22,7 @@ public interface TareaClient {
     @PostMapping("/api/v1/tareas")
     TareaResponseDTO crearTarea(@RequestBody TareaRequestDTO request);
 
-    @PatchMapping("/api/v1/tareas/{id}/estado")
+    @PutMapping("/api/v1/tareas/{id}/estado")
     TareaResponseDTO cambiarEstadoTarea(
             @PathVariable("id") Long id,
             @RequestBody CambioEstadoTareaRequest request

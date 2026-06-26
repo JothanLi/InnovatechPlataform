@@ -24,9 +24,11 @@ public class FeignAuthInterceptor {
             HttpServletRequest request = attributes.getRequest();
             String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-            if (authorizationHeader != null && !authorizationHeader.isBlank()) {
-                template.header(HttpHeaders.AUTHORIZATION, authorizationHeader);
+            if (authorizationHeader == null || authorizationHeader.isBlank()) {
+                return;
             }
+
+            template.header(HttpHeaders.AUTHORIZATION, authorizationHeader);
         };
     }
 }

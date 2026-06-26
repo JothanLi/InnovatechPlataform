@@ -1,7 +1,8 @@
 package com.innovatech.bff_service.controller;
 
-import com.innovatech.bff_service.dto.AsignacionProyectoResponse;
+import com.innovatech.bff_service.client.TareaClient;
 import com.innovatech.bff_service.dto.AsignacionProyectoRequest;
+import com.innovatech.bff_service.dto.AsignacionProyectoResponse;
 import com.innovatech.bff_service.dto.AvanceProyectoResponse;
 import com.innovatech.bff_service.dto.DashboardResumenResponse;
 import com.innovatech.bff_service.dto.MiembroEquipoRequest;
@@ -31,11 +32,6 @@ public class BffController {
         this.bffFacade = bffFacade;
     }
 
-    @GetMapping("/dashboard/resumen")
-    public DashboardResumenResponse obtenerDashboardResumen() {
-        return bffFacade.obtenerDashboardResumen();
-    }
-
     @GetMapping("/proyectos")
     public List<ProyectoResponseDTO> listarProyectos() {
         return bffFacade.listarProyectos();
@@ -49,14 +45,20 @@ public class BffController {
         return bffFacade.crearProyecto(request);
     }
 
-    @GetMapping("/proyectos/{idProyecto}/detalle")
+    @GetMapping({
+            "/proyectos/{idProyecto}",
+            "/proyectos/{idProyecto}/detalle"
+    })
     public ProyectoDetalleResponse obtenerDetalleProyecto(
             @PathVariable Long idProyecto
     ) {
         return bffFacade.obtenerDetalleProyecto(idProyecto);
     }
 
-    @GetMapping("/proyectos/{idProyecto}/tareas")
+    @GetMapping({
+            "/proyectos/{idProyecto}/tareas",
+            "/tareas/proyecto/{idProyecto}"
+    })
     public List<TareaResponseDTO> obtenerTareasPorProyecto(
             @PathVariable Long idProyecto
     ) {
@@ -92,14 +94,20 @@ public class BffController {
         return bffFacade.crearMiembro(request);
     }
 
-    @GetMapping("/proyectos/{idProyecto}/miembros")
+    @GetMapping({
+            "/proyectos/{idProyecto}/miembros",
+            "/equipos/asignaciones/proyecto/{idProyecto}"
+    })
     public List<AsignacionProyectoResponse> obtenerMiembrosPorProyecto(
             @PathVariable Long idProyecto
     ) {
         return bffFacade.obtenerMiembrosPorProyecto(idProyecto);
     }
 
-    @PostMapping("/asignaciones")
+    @PostMapping({
+            "/asignaciones",
+            "/equipos/asignaciones"
+    })
     @ResponseStatus(HttpStatus.CREATED)
     public AsignacionProyectoResponse asignarMiembroAProyecto(
             @Valid @RequestBody AsignacionProyectoRequest request
@@ -112,6 +120,11 @@ public class BffController {
             @PathVariable Long idProyecto
     ) {
         return bffFacade.obtenerAvanceProyecto(idProyecto);
+    }
+
+    @GetMapping("/dashboard/resumen")
+    public DashboardResumenResponse obtenerDashboardResumen() {
+        return bffFacade.obtenerDashboardResumen();
     }
 
     public record TareaClientEstadoRequest(

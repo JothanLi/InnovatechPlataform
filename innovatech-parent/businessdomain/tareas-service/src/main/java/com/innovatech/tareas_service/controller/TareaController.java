@@ -69,6 +69,14 @@ public class TareaController {
         return ResponseEntity.ok(tareaService.cambiarEstado(id, request.getEstado()));
     }
 
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<TareaResponseDTO> cambiarEstadoPut(
+            @PathVariable Long id,
+            @Valid @RequestBody CambioEstadoTareaDTO request
+    ) {
+        return ResponseEntity.ok(tareaService.cambiarEstado(id, request.getEstado()));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarTarea(@PathVariable Long id) {
         tareaService.eliminarTarea(id);

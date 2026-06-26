@@ -31,10 +31,15 @@ public class GlobalExceptionHandler {
     ) {
         HttpStatus status = resolverStatus(exception.status());
 
-        String mensaje = extraerMensajeFeign(
-                exception,
-                "No fue posible completar la operación en uno de los microservicios."
-        );
+        String contenido = exception.contentUTF8();
+
+        String mensaje = "Feign falló. " +
+                "statusFeign=" + exception.status() +
+                ", methodKey=" + exception.request().httpMethod() +
+                ", url=" + exception.request().url() +
+                ", body=" + (contenido == null || contenido.isBlank() ? "SIN_BODY" : contenido);
+
+        System.out.println("ERROR FEIGN BFF >>> " + mensaje);
 
         ErrorResponse response = ErrorResponse.builder()
                 .fecha(LocalDateTime.now())
