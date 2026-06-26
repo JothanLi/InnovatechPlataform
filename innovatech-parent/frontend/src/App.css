@@ -1874,3 +1874,164 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.project-status-select {
+  margin-top: 0.75rem;
+  width: 100%;
+  border: 1px solid #d8e0ee;
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.project-status-actions {
+  width: 100%;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.project-status-actions label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #475569;
+}
+
+.project-status-select {
+  margin-top: 0.75rem;
+  width: 100%;
+  border: 1px solid #d8e0ee;
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.project-status-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.project-status-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.project-update-box {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.project-update-button {
+  background: #334155;
+  color: #ffffff;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 0;
+}
+
+.project-update-button:hover {
+  background: #1e293b;
+}
+
+.project-update-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.project-update-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: 190px;
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 12px;
+  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.18);
+  padding: 8px;
+}
+
+.project-update-menu button {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f172a;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.project-update-menu button:hover:not(:disabled) {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.project-update-menu button:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.project-update-box {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.project-update-button {
+  margin-top: 0;
+}
+
+.project-update-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 999;
+  width: 190px;
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 12px;
+  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.18);
+  padding: 8px;
+}
+
+.project-update-menu button {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f172a;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.project-update-menu button:hover:not(:disabled) {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.project-update-menu button:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}

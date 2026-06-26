@@ -34,6 +34,7 @@ public class CurrentUserService {
 
     public CurrentUser getCurrentUser() {
         String token = resolveBearerToken();
+
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
@@ -41,17 +42,33 @@ public class CurrentUserService {
                 .getBody();
 
         String email = claims.getSubject();
-        List<String> roles = extractRoles(claims);
+
         MiembroEquipoResponse miembro = equipoClient.listarMiembros()
                 .stream()
+                .filter(item -> item != null && item.getEmail() != null)
                 .filter(item -> email.equalsIgnoreCase(item.getEmail()))
                 .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no registrado"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Usuario no registrado"
+                ));
+
+        List<String> rolesToken = extractRoles(claims);
+
+        String rolFinal = rolesToken.isEmpty()
+                ? miembro.getRol()
+                : rolesToken.get(0);
+
+        rolFinal = normalizarRol(rolFinal);
+
+        if (rolFinal == null || rolFinal.isBlank()) {
+            rolFinal = normalizarRol(miembro.getRol());
+        }
 
         return new CurrentUser(
                 miembro.getId(),
                 miembro.getEmail(),
-                roles.isEmpty() ? miembro.getRol() : roles.get(0),
+                rolFinal,
                 buildDisplayName(miembro)
         );
     }
@@ -61,14 +78,20 @@ public class CurrentUserService {
                 (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 
         if (attributes == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No hay contexto de autenticacion");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "No hay contexto de autenticacion"
+            );
         }
 
         HttpServletRequest request = attributes.getRequest();
         String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token JWT requerido");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Token JWT requerido"
+            );
         }
 
         return authorizationHeader.substring(7);
@@ -82,11 +105,32 @@ public class CurrentUserService {
             return ((List<?>) roles)
                     .stream()
                     .map(String::valueOf)
+                    .map(this::normalizarRol)
+                    .filter(rol -> rol != null && !rol.isBlank())
                     .toList();
         }
 
         String role = claims.get("role", String.class);
-        return role == null || role.isBlank() ? List.of() : List.of(role);
+
+        if (role == null || role.isBlank()) {
+            return List.of();
+        }
+
+        return List.of(normalizarRol(role));
+    }
+
+    private String normalizarRol(String rol) {
+        if (rol == null) {
+            return "";
+        }
+
+        String rolNormalizado = rol.trim().toUpperCase();
+
+        if (rolNormalizado.startsWith("ROLE_")) {
+            rolNormalizado = rolNormalizado.substring(5);
+        }
+
+        return rolNormalizado;
     }
 
     private Key getSigningKey() {
@@ -94,7 +138,8 @@ public class CurrentUserService {
     }
 
     private String buildDisplayName(MiembroEquipoResponse miembro) {
-        return String.join(" ",
+        return String.join(
+                " ",
                 List.of(
                         valueOrEmpty(miembro.getNombres()),
                         valueOrEmpty(miembro.getApellidoPaterno())

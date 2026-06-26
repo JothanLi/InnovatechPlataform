@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -24,6 +25,28 @@ public class GlobalExceptionHandler {
         this.objectMapper = objectMapper;
     }
 
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> manejarResponseStatusException(
+            ResponseStatusException exception,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.resolve(exception.getStatusCode().value());
+
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+
+        ErrorResponse response = ErrorResponse.builder()
+                .fecha(LocalDateTime.now())
+                .status(status.value())
+                .error(resolverTituloError(status))
+                .mensaje(exception.getReason() == null ? exception.getMessage() : exception.getReason())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(status).body(response);
+    }
+
     @ExceptionHandler(FeignException.class)
     public ResponseEntity<ErrorResponse> manejarErrorMicroservicio(
             FeignException exception,
@@ -31,15 +54,21 @@ public class GlobalExceptionHandler {
     ) {
         HttpStatus status = resolverStatus(exception.status());
 
-        String contenido = exception.contentUTF8();
+        String mensaje = extraerMensajeFeign(
+                exception,
+                "No se pudo completar la operación porque un microservicio rechazó la solicitud."
+        );
 
-        String mensaje = "Feign falló. " +
-                "statusFeign=" + exception.status() +
-                ", methodKey=" + exception.request().httpMethod() +
-                ", url=" + exception.request().url() +
-                ", body=" + (contenido == null || contenido.isBlank() ? "SIN_BODY" : contenido);
-
-        System.out.println("ERROR FEIGN BFF >>> " + mensaje);
+        System.out.println(
+                "ERROR FEIGN BFF >>> statusFeign="
+                        + exception.status()
+                        + ", methodKey="
+                        + exception.request().httpMethod()
+                        + ", url="
+                        + exception.request().url()
+                        + ", body="
+                        + exception.contentUTF8()
+        );
 
         ErrorResponse response = ErrorResponse.builder()
                 .fecha(LocalDateTime.now())
@@ -79,6 +108,8 @@ public class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request
     ) {
+        exception.printStackTrace();
+
         return ErrorResponse.builder()
                 .fecha(LocalDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
@@ -100,7 +131,7 @@ public class GlobalExceptionHandler {
 
     private String resolverTituloError(HttpStatus status) {
         if (status.is4xxClientError()) {
-            return "Solicitud rechazada por microservicio";
+            return "Solicitud rechazada";
         }
 
         if (status.is5xxServerError()) {

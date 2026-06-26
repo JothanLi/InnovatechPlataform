@@ -18,9 +18,18 @@ const columnasTareas = [
 
 function ProyectoDetallePage() {
   const { idProyecto } = useParams();
-  const rolesSesion = JSON.parse(localStorage.getItem("innovatech_roles") || "[]");
+
+  const rolesSesion = obtenerRolesSesion();
+
   const puedeGestionarProyecto = rolesSesion.some((rol) =>
-    ["ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER"].includes(rol)
+    [
+      "ADMIN",
+      "ROLE_ADMIN",
+      "PROJECT_MANAGER",
+      "ROLE_PROJECT_MANAGER",
+      "SCRUM_MASTER",
+      "ROLE_SCRUM_MASTER",
+    ].includes(rol)
   );
 
   const [detalle, setDetalle] = useState(null);
@@ -31,6 +40,8 @@ function ProyectoDetallePage() {
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [actualizandoEstadoProyecto, setActualizandoEstadoProyecto] = useState(false);
+  const [mostrarOpcionesEstado, setMostrarOpcionesEstado] = useState(false);
 
   const cargarVista = useCallback(async () => {
     try {
@@ -46,8 +57,8 @@ function ProyectoDetallePage() {
       }
 
       setError("");
-    } catch {
-      setError("No se pudo cargar el detalle del proyecto.");
+    } catch (error) {
+      setError(obtenerMensajeError(error, "No se pudo cargar el detalle del proyecto."));
     }
   }, [idProyecto, puedeGestionarProyecto]);
 
@@ -86,6 +97,7 @@ function ProyectoDetallePage() {
         ...normalizarFechas(formTarea),
         idProyecto: Number(idProyecto),
       });
+
       setFormTarea(tareaInicial);
       setMensaje("Tarea creada correctamente.");
       await cargarVista();
@@ -107,6 +119,7 @@ function ProyectoDetallePage() {
         idProyecto: Number(idProyecto),
         idMiembro: Number(idMiembroAsignar),
       });
+
       setIdMiembroAsignar("");
       setMensaje("Miembro asignado correctamente.");
       await cargarVista();
@@ -127,6 +140,23 @@ function ProyectoDetallePage() {
       await cargarVista();
     } catch (error) {
       setError(obtenerMensajeError(error, "No se pudo cambiar el estado de la tarea."));
+    }
+  };
+
+  const cambiarEstadoProyecto = async (estado) => {
+    setError("");
+    setMensaje("");
+    setActualizandoEstadoProyecto(true);
+
+    try {
+      await bffApi.patch(`/proyectos/${idProyecto}/estado`, { estado });
+      setMensaje("Estado del proyecto actualizado correctamente.");
+      setMostrarOpcionesEstado(false);
+      await cargarVista();
+    } catch (error) {
+      setError(obtenerMensajeError(error, "No se pudo cambiar el estado del proyecto."));
+    } finally {
+      setActualizandoEstadoProyecto(false);
     }
   };
 
@@ -170,15 +200,87 @@ function ProyectoDetallePage() {
           <span className={`status status-${detalle.proyecto.estado}`}>
             {formatearEstadoProyecto(detalle.proyecto.estado)}
           </span>
+
           <strong>{formatearPorcentaje(detalle.avance.porcentajeAvance)}</strong>
           <small>avance completado</small>
+
+          {puedeGestionarProyecto ? (
+            <div className="project-update-box">
+              <button
+                type="button"
+                className="project-update-button"
+                disabled={actualizandoEstadoProyecto}
+                onClick={() => setMostrarOpcionesEstado((valorActual) => !valorActual)}
+              >
+                {actualizandoEstadoProyecto ? "Actualizando..." : "Actualizar proyecto"}
+              </button>
+
+              {mostrarOpcionesEstado && (
+                <div className="project-update-menu">
+                  <button
+                    type="button"
+                    onClick={() => cambiarEstadoProyecto("PLANNED")}
+                    disabled={detalle.proyecto.estado === "PLANNED" || actualizandoEstadoProyecto}
+                  >
+                    Planificado
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => cambiarEstadoProyecto("IN_PROGRESS")}
+                    disabled={detalle.proyecto.estado === "IN_PROGRESS" || actualizandoEstadoProyecto}
+                  >
+                    En progreso
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => cambiarEstadoProyecto("COMPLETED")}
+                    disabled={detalle.proyecto.estado === "COMPLETED" || actualizandoEstadoProyecto}
+                  >
+                    Finalizado
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => cambiarEstadoProyecto("CANCELLED")}
+                    disabled={detalle.proyecto.estado === "CANCELLED" || actualizandoEstadoProyecto}
+                  >
+                    Cancelado
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <small className="muted">No tienes permisos para actualizar el estado.</small>
+          )}
         </div>
       </section>
 
       <nav className="workspace-tabs work-tabs" aria-label="Vistas del proyecto">
-        <button className={tabActiva === "resumen" ? "active" : ""} type="button" onClick={() => setTabActiva("resumen")}>Resumen</button>
-        <button className={tabActiva === "tareas" ? "active" : ""} type="button" onClick={() => setTabActiva("tareas")}>Tareas</button>
-        <button className={tabActiva === "equipo" ? "active" : ""} type="button" onClick={() => setTabActiva("equipo")}>Equipo</button>
+        <button
+          className={tabActiva === "resumen" ? "active" : ""}
+          type="button"
+          onClick={() => setTabActiva("resumen")}
+        >
+          Resumen
+        </button>
+
+        <button
+          className={tabActiva === "tareas" ? "active" : ""}
+          type="button"
+          onClick={() => setTabActiva("tareas")}
+        >
+          Tareas
+        </button>
+
+        <button
+          className={tabActiva === "equipo" ? "active" : ""}
+          type="button"
+          onClick={() => setTabActiva("equipo")}
+        >
+          Equipo
+        </button>
       </nav>
 
       {tabActiva === "resumen" && (
@@ -189,11 +291,16 @@ function ProyectoDetallePage() {
                 <h2>Avance del proyecto</h2>
                 <p>Progreso calculado desde las tareas registradas.</p>
               </div>
-              <strong className="progress-number">{formatearPorcentaje(detalle.avance.porcentajeAvance)}</strong>
+              <strong className="progress-number">
+                {formatearPorcentaje(detalle.avance.porcentajeAvance)}
+              </strong>
             </div>
 
             <div className="progress progress-xl">
-              <div className="progress-bar" style={{ width: `${limitarPorcentaje(detalle.avance.porcentajeAvance)}%` }} />
+              <div
+                className="progress-bar"
+                style={{ width: `${limitarPorcentaje(detalle.avance.porcentajeAvance)}%` }}
+              />
             </div>
 
             <div className="task-summary-row">
@@ -223,13 +330,16 @@ function ProyectoDetallePage() {
 
           <article className="panel work-side-panel">
             <h2>Equipo asignado</h2>
+
             {detalle.miembrosAsignados.length === 0 ? (
               <p className="muted">Aún no hay miembros asignados.</p>
             ) : (
               <div className="mini-team-list">
                 {detalle.miembrosAsignados.slice(0, 4).map((miembro) => (
                   <div key={miembro.id}>
-                    <span className="avatar avatar-pro">{obtenerInicialesAsignacion(miembro)}</span>
+                    <span className="avatar avatar-pro">
+                      {obtenerInicialesAsignacion(miembro)}
+                    </span>
                     <div>
                       <strong>{miembro.nombreMiembro}</strong>
                       <small>{formatearRol(miembro.rolMiembro)}</small>
@@ -247,30 +357,58 @@ function ProyectoDetallePage() {
           {puedeGestionarProyecto && (
             <aside className="panel work-form-panel task-create-panel">
               <h2>Nueva tarea</h2>
+
               <form className="form-grid single" onSubmit={crearTarea}>
-              <FormField label="Descripción">
-                <textarea name="descripcion" value={formTarea.descripcion} onChange={actualizarCampoTarea} maxLength="500" rows="4" required />
-              </FormField>
+                <FormField label="Descripción">
+                  <textarea
+                    name="descripcion"
+                    value={formTarea.descripcion}
+                    onChange={actualizarCampoTarea}
+                    maxLength="500"
+                    rows="4"
+                    required
+                  />
+                </FormField>
 
-              <FormField label="Responsable">
-                <input name="responsable" value={formTarea.responsable} onChange={actualizarCampoTarea} maxLength="120" required />
-              </FormField>
+                <FormField label="Responsable">
+                  <input
+                    name="responsable"
+                    value={formTarea.responsable}
+                    onChange={actualizarCampoTarea}
+                    maxLength="120"
+                    required
+                  />
+                </FormField>
 
-              <FormField label="Estado">
-                <select name="estado" value={formTarea.estado} onChange={actualizarCampoTarea}>
-                  <option value="PENDING">Pendiente</option>
-                  <option value="IN_PROGRESS">En progreso</option>
-                  <option value="DONE">Terminada</option>
-                </select>
-              </FormField>
+                <FormField label="Estado">
+                  <select
+                    name="estado"
+                    value={formTarea.estado}
+                    onChange={actualizarCampoTarea}
+                  >
+                    <option value="PENDING">Pendiente</option>
+                    <option value="IN_PROGRESS">En progreso</option>
+                    <option value="DONE">Terminada</option>
+                  </select>
+                </FormField>
 
-              <FormField label="Inicio">
-                <input type="date" name="fechaInicio" value={formTarea.fechaInicio} onChange={actualizarCampoTarea} />
-              </FormField>
+                <FormField label="Inicio">
+                  <input
+                    type="date"
+                    name="fechaInicio"
+                    value={formTarea.fechaInicio}
+                    onChange={actualizarCampoTarea}
+                  />
+                </FormField>
 
-              <FormField label="Fin estimado">
-                <input type="date" name="fechaFinEstimada" value={formTarea.fechaFinEstimada} onChange={actualizarCampoTarea} />
-              </FormField>
+                <FormField label="Fin estimado">
+                  <input
+                    type="date"
+                    name="fechaFinEstimada"
+                    value={formTarea.fechaFinEstimada}
+                    onChange={actualizarCampoTarea}
+                  />
+                </FormField>
 
                 <button className="button" type="submit" disabled={guardando}>
                   {guardando ? "Guardando..." : "Crear tarea"}
@@ -293,11 +431,15 @@ function ProyectoDetallePage() {
                   columna.tareas.map((tarea) => (
                     <article className="task-card work-task-card" key={tarea.id}>
                       <div className="task-card-head">
-                        <span className={`status status-${tarea.estado}`}>{formatearEstadoTarea(tarea.estado)}</span>
+                        <span className={`status status-${tarea.estado}`}>
+                          {formatearEstadoTarea(tarea.estado)}
+                        </span>
                         <small>{obtenerIndicadorFecha(tarea)}</small>
                       </div>
+
                       <h3>{tarea.descripcion}</h3>
                       <p><strong>Responsable:</strong> {tarea.responsable || "Sin responsable"}</p>
+
                       <div className="date-row date-row-pro">
                         <div>
                           <small>Inicio</small>
@@ -308,23 +450,26 @@ function ProyectoDetallePage() {
                           <strong>{formatearFecha(tarea.fechaFinEstimada)}</strong>
                         </div>
                       </div>
-                      <div className="inline-actions task-actions">
-                        <button
+
+                      {puedeGestionarProyecto && (
+                        <div className="inline-actions task-actions">
+                          <button
                             type="button"
                             onClick={() => cambiarEstadoTarea(tarea.id, "IN_PROGRESS")}
                             disabled={tarea.estado !== "PENDING"}
-                        >
-                          Iniciar
-                        </button>
+                          >
+                            Iniciar
+                          </button>
 
-                        <button
+                          <button
                             type="button"
                             onClick={() => cambiarEstadoTarea(tarea.id, "DONE")}
                             disabled={tarea.estado !== "IN_PROGRESS"}
-                        >
-                          Finalizar
-                        </button>
-                      </div>
+                          >
+                            Finalizar
+                          </button>
+                        </div>
+                      )}
                     </article>
                   ))
                 )}
@@ -339,18 +484,28 @@ function ProyectoDetallePage() {
           {puedeGestionarProyecto && (
             <article className="panel work-form-panel">
               <h2>Asignar miembro</h2>
+
               <form className="form-grid single" onSubmit={asignarMiembro}>
-              <FormField label="Miembro existente">
-                <select value={idMiembroAsignar} onChange={(event) => setIdMiembroAsignar(event.target.value)} required>
-                  <option value="">Seleccionar miembro</option>
-                  {miembrosDisponibles.map((miembro) => (
-                    <option key={miembro.id} value={miembro.id}>
-                      {obtenerNombreCompletoMiembro(miembro)} - {formatearRol(miembro.rol)}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-                <button className="button" type="submit" disabled={guardando || !idMiembroAsignar}>
+                <FormField label="Miembro existente">
+                  <select
+                    value={idMiembroAsignar}
+                    onChange={(event) => setIdMiembroAsignar(event.target.value)}
+                    required
+                  >
+                    <option value="">Seleccionar miembro</option>
+                    {miembrosDisponibles.map((miembro) => (
+                      <option key={miembro.id} value={miembro.id}>
+                        {obtenerNombreCompletoMiembro(miembro)} - {formatearRol(miembro.rol)}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <button
+                  className="button"
+                  type="submit"
+                  disabled={guardando || !idMiembroAsignar}
+                >
                   Asignar al proyecto
                 </button>
               </form>
@@ -366,12 +521,17 @@ function ProyectoDetallePage() {
             ) : (
               detalle.miembrosAsignados.map((miembro) => (
                 <article className="team-card team-card-pro" key={miembro.id}>
-                  <div className="avatar avatar-pro">{obtenerInicialesAsignacion(miembro)}</div>
+                  <div className="avatar avatar-pro">
+                    {obtenerInicialesAsignacion(miembro)}
+                  </div>
+
                   <div className="team-card-body">
                     <div className="team-card-heading">
                       <h3>{miembro.nombreMiembro}</h3>
                     </div>
-                    <span className="role-pill role-pill-pro">{formatearRol(miembro.rolMiembro)}</span>
+                    <span className="role-pill role-pill-pro">
+                      {formatearRol(miembro.rolMiembro)}
+                    </span>
                   </div>
                 </article>
               ))
@@ -381,6 +541,102 @@ function ProyectoDetallePage() {
       )}
     </main>
   );
+}
+
+function obtenerRolesSesion() {
+  const posiblesKeys = [
+    "innovatech_roles",
+    "roles",
+    "user_roles",
+    "authorities",
+  ];
+
+  const roles = [];
+
+  posiblesKeys.forEach((key) => {
+    try {
+      const valor = localStorage.getItem(key);
+
+      if (!valor) {
+        return;
+      }
+
+      const parsed = JSON.parse(valor);
+
+      if (Array.isArray(parsed)) {
+        parsed.forEach((rol) => roles.push(normalizarRol(rol)));
+      } else if (typeof parsed === "string") {
+        roles.push(normalizarRol(parsed));
+      }
+    } catch {
+      const valorPlano = localStorage.getItem(key);
+      if (valorPlano) {
+        roles.push(normalizarRol(valorPlano));
+      }
+    }
+  });
+
+  const posiblesUsuarios = [
+    "innovatech_user",
+    "usuario",
+    "user",
+    "currentUser",
+    "authUser",
+  ];
+
+  posiblesUsuarios.forEach((key) => {
+    try {
+      const valor = localStorage.getItem(key);
+
+      if (!valor) {
+        return;
+      }
+
+      const usuario = JSON.parse(valor);
+
+      if (usuario?.rol) {
+        roles.push(normalizarRol(usuario.rol));
+      }
+
+      if (usuario?.role) {
+        roles.push(normalizarRol(usuario.role));
+      }
+
+      if (usuario?.tipoUsuario) {
+        roles.push(normalizarRol(usuario.tipoUsuario));
+      }
+
+      if (Array.isArray(usuario?.roles)) {
+        usuario.roles.forEach((rol) => roles.push(normalizarRol(rol)));
+      }
+
+      if (Array.isArray(usuario?.authorities)) {
+        usuario.authorities.forEach((authority) => {
+          if (typeof authority === "string") {
+            roles.push(normalizarRol(authority));
+          } else if (authority?.authority) {
+            roles.push(normalizarRol(authority.authority));
+          }
+        });
+      }
+    } catch {
+      // Ignorar valores inválidos en localStorage
+    }
+  });
+
+  return [...new Set(roles.filter(Boolean))];
+}
+
+function normalizarRol(rol) {
+  if (!rol) {
+    return "";
+  }
+
+  if (typeof rol === "object" && rol.authority) {
+    return String(rol.authority).trim().toUpperCase();
+  }
+
+  return String(rol).trim().toUpperCase();
 }
 
 function TaskResume({ label, value }) {
@@ -417,7 +673,7 @@ function formatearEstadoProyecto(estado) {
   const estados = {
     PLANNED: "Planificado",
     IN_PROGRESS: "En progreso",
-    COMPLETED: "Completado",
+    COMPLETED: "Finalizado",
     CANCELLED: "Cancelado",
   };
 
@@ -437,8 +693,11 @@ function formatearEstadoTarea(estado) {
 function formatearRol(rol) {
   const roles = {
     ADMIN: "Administrador",
+    ROLE_ADMIN: "Administrador",
     PROJECT_MANAGER: "Project Manager",
+    ROLE_PROJECT_MANAGER: "Project Manager",
     SCRUM_MASTER: "Scrum Master",
+    ROLE_SCRUM_MASTER: "Scrum Master",
     DEVELOPER: "Developer",
     QA: "QA",
     DEVOPS: "DevOps",

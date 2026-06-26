@@ -45,6 +45,14 @@ public class BffController {
         return bffFacade.crearProyecto(request);
     }
 
+    @PatchMapping("/proyectos/{idProyecto}/estado")
+    public ProyectoResponseDTO cambiarEstadoProyecto(
+            @PathVariable Long idProyecto,
+            @Valid @RequestBody ProyectoEstadoRequest request
+    ) {
+        return bffFacade.cambiarEstadoProyecto(idProyecto, request.estado());
+    }
+
     @GetMapping({
             "/proyectos/{idProyecto}",
             "/proyectos/{idProyecto}/detalle"
@@ -129,6 +137,12 @@ public class BffController {
 
     public record TareaClientEstadoRequest(
             @NotBlank(message = "El estado de la tarea es obligatorio")
+            String estado
+    ) {
+    }
+
+    public record ProyectoEstadoRequest(
+            @NotBlank(message = "El estado del proyecto es obligatorio")
             String estado
     ) {
     }

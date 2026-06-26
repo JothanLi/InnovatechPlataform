@@ -75,6 +75,8 @@ function AdminDashboardPage() {
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [actualizandoEstadoProyecto, setActualizandoEstadoProyecto] = useState(false);
+  const [mostrarMenuEstadoProyecto, setMostrarMenuEstadoProyecto] = useState(false);
 
   const cargarVistaAdmin = useCallback(async () => {
     setCargando(true);
@@ -243,6 +245,7 @@ function AdminDashboardPage() {
     setDetalleProyecto(null);
     setVistaDetalle("resumen");
     setTabActiva("detalle-proyecto");
+    setMostrarMenuEstadoProyecto(false);
     await cargarDetalleProyecto(idProyecto);
   };
 
@@ -253,6 +256,7 @@ function AdminDashboardPage() {
     setIdMiembroAsignar("");
     setFormTarea(tareaInicial);
     setVistaDetalle("resumen");
+    setMostrarMenuEstadoProyecto(false);
   };
 
   const cargarDetalleProyecto = async (idProyecto = proyectoSeleccionadoId) => {
@@ -361,6 +365,7 @@ function AdminDashboardPage() {
       setFormTarea(tareaInicial);
       setMensaje("Tarea creada correctamente.");
       await cargarDetalleProyecto(proyectoSeleccionadoId);
+      await cargarVistaAdmin();
     } catch (error) {
       setError(obtenerMensajeError(error, "No se pudo crear la tarea."));
     } finally {
@@ -394,6 +399,39 @@ function AdminDashboardPage() {
       setError(obtenerMensajeError(error, "No se pudo asignar el miembro."));
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const cambiarEstadoProyecto = async (estado) => {
+    setMensaje("");
+    setError("");
+
+    if (!proyectoSeleccionadoId) {
+      setError("Selecciona un proyecto antes de cambiar el estado.");
+      return;
+    }
+
+    setActualizandoEstadoProyecto(true);
+
+    try {
+      await bffApi.patch(`/proyectos/${proyectoSeleccionadoId}/estado`, {
+        estado,
+      });
+
+      setMensaje("Estado del proyecto actualizado correctamente.");
+      setMostrarMenuEstadoProyecto(false);
+
+      await cargarDetalleProyecto(proyectoSeleccionadoId);
+      await cargarVistaAdmin();
+    } catch (error) {
+      setError(
+        obtenerMensajeError(
+          error,
+          "No se pudo actualizar el estado del proyecto."
+        )
+      );
+    } finally {
+      setActualizandoEstadoProyecto(false);
     }
   };
 
@@ -615,7 +653,6 @@ function AdminDashboardPage() {
               </section>
             )}
 
-
             {tabActiva === "detalle-proyecto" && (
               <section className="admin-section project-workspace">
                 <div className="workspace-breadcrumb">
@@ -646,9 +683,65 @@ function AdminDashboardPage() {
                         <span className={`status status-${detalleProyecto.proyecto.estado}`}>
                           {formatearEstadoProyecto(detalleProyecto.proyecto.estado)}
                         </span>
-                        <button className="button secondary" type="button" onClick={() => cargarDetalleProyecto()} disabled={cargandoDetalle}>
-                          Actualizar proyecto
-                        </button>
+
+                        <div className="project-update-box">
+                          <button
+                            className="button secondary project-update-button"
+                            type="button"
+                            disabled={actualizandoEstadoProyecto}
+                            onClick={() => setMostrarMenuEstadoProyecto((actual) => !actual)}
+                          >
+                            {actualizandoEstadoProyecto ? "Actualizando..." : "Actualizar proyecto"}
+                          </button>
+
+                          {mostrarMenuEstadoProyecto && (
+                            <div className="project-update-menu">
+                              <button
+                                type="button"
+                                onClick={() => cambiarEstadoProyecto("PLANNED")}
+                                disabled={
+                                  detalleProyecto.proyecto.estado === "PLANNED" ||
+                                  actualizandoEstadoProyecto
+                                }
+                              >
+                                Planificado
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => cambiarEstadoProyecto("IN_PROGRESS")}
+                                disabled={
+                                  detalleProyecto.proyecto.estado === "IN_PROGRESS" ||
+                                  actualizandoEstadoProyecto
+                                }
+                              >
+                                En progreso
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => cambiarEstadoProyecto("COMPLETED")}
+                                disabled={
+                                  detalleProyecto.proyecto.estado === "COMPLETED" ||
+                                  actualizandoEstadoProyecto
+                                }
+                              >
+                                Finalizado
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => cambiarEstadoProyecto("CANCELLED")}
+                                disabled={
+                                  detalleProyecto.proyecto.estado === "CANCELLED" ||
+                                  actualizandoEstadoProyecto
+                                }
+                              >
+                                Cancelado
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </header>
 
@@ -792,17 +885,17 @@ function AdminDashboardPage() {
                                   </div>
                                   <div className="inline-actions task-actions">
                                     <button
-                                        type="button"
-                                        onClick={() => cambiarEstadoTarea(tarea.id, "IN_PROGRESS")}
-                                        disabled={tarea.estado !== "PENDING"}
+                                      type="button"
+                                      onClick={() => cambiarEstadoTarea(tarea.id, "IN_PROGRESS")}
+                                      disabled={tarea.estado !== "PENDING"}
                                     >
                                       Iniciar
                                     </button>
 
                                     <button
-                                        type="button"
-                                        onClick={() => cambiarEstadoTarea(tarea.id, "DONE")}
-                                        disabled={tarea.estado !== "IN_PROGRESS"}
+                                      type="button"
+                                      onClick={() => cambiarEstadoTarea(tarea.id, "DONE")}
+                                      disabled={tarea.estado !== "IN_PROGRESS"}
                                     >
                                       Finalizar
                                     </button>
@@ -1140,7 +1233,7 @@ function formatearEstadoProyecto(estado) {
   const estados = {
     PLANNED: "Planificado",
     IN_PROGRESS: "En progreso",
-    COMPLETED: "Completado",
+    COMPLETED: "Finalizado",
     CANCELLED: "Cancelado",
   };
 

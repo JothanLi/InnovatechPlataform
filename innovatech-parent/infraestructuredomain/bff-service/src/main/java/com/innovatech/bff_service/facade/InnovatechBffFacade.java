@@ -61,6 +61,20 @@ public class InnovatechBffFacade {
         return proyectoClient.crearProyecto(request);
     }
 
+    public ProyectoResponseDTO cambiarEstadoProyecto(Long idProyecto, String estado) {
+        CurrentUser user = currentUserService.getCurrentUser();
+
+        requireProjectWorkManager(user);
+        requireProyectoVisible(idProyecto, user);
+
+        String estadoNormalizado = normalizarEstadoProyecto(estado);
+
+        return proyectoClient.cambiarEstadoProyecto(
+                idProyecto,
+                new ProyectoClient.CambioEstadoProyectoRequest(estadoNormalizado)
+        );
+    }
+
     public ProyectoDetalleResponse obtenerDetalleProyecto(Long idProyecto) {
         CurrentUser user = currentUserService.getCurrentUser();
         requireProyectoVisible(idProyecto, user);
@@ -87,13 +101,27 @@ public class InnovatechBffFacade {
 
     public TareaResponseDTO crearTarea(TareaRequestDTO request) {
         CurrentUser user = currentUserService.getCurrentUser();
+
         requireProjectWorkManager(user);
         requireProyectoVisible(request.idProyecto(), user);
+
         return tareaClient.crearTarea(request);
     }
 
     public TareaResponseDTO cambiarEstadoTarea(Long idTarea, String estado) {
+        CurrentUser user = currentUserService.getCurrentUser();
+
+        requireProjectWorkManager(user);
+
         String estadoNormalizado = normalizarEstadoTarea(estado);
+
+        TareaResponseDTO tarea = buscarTareaPorId(idTarea);
+
+        if (tarea == null || tarea.getIdProyecto() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró la tarea solicitada");
+        }
+
+        requireProyectoVisible(tarea.getIdProyecto(), user);
 
         return tareaClient.cambiarEstadoTarea(
                 idTarea,
@@ -123,8 +151,10 @@ public class InnovatechBffFacade {
 
     public AsignacionProyectoResponse asignarMiembroAProyecto(AsignacionProyectoRequest request) {
         CurrentUser user = currentUserService.getCurrentUser();
+
         requireProjectWorkManager(user);
         requireProyectoVisible(request.idProyecto(), user);
+
         return equipoClient.asignarMiembroAProyecto(request);
     }
 
@@ -401,6 +431,23 @@ public class InnovatechBffFacade {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Estado de tarea inválido. Valores permitidos: PENDING, IN_PROGRESS, DONE"
+            );
+        }
+
+        return estadoNormalizado;
+    }
+
+    private String normalizarEstadoProyecto(String estado) {
+        if (estado == null || estado.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El estado del proyecto es obligatorio");
+        }
+
+        String estadoNormalizado = estado.trim().toUpperCase();
+
+        if (!Set.of("PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED").contains(estadoNormalizado)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Estado de proyecto inválido. Valores permitidos: PLANNED, IN_PROGRESS, COMPLETED, CANCELLED"
             );
         }
 

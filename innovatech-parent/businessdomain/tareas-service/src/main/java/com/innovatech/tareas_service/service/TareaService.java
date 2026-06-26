@@ -1,6 +1,7 @@
 package com.innovatech.tareas_service.service;
 
 import com.innovatech.tareas_service.adapter.ProyectoServiceAdapter;
+import com.innovatech.tareas_service.client.ProyectoClient;
 import com.innovatech.tareas_service.dto.ProyectoAdaptadoResponse;
 import com.innovatech.tareas_service.dto.TareaRequestDTO;
 import com.innovatech.tareas_service.dto.TareaResponseDTO;
@@ -21,6 +22,7 @@ public class TareaService {
 
     private final TareaRepository tareaRepository;
     private final ProyectoServiceAdapter proyectoServiceAdapter;
+    private final ProyectoClient proyectoClient;
 
     public TareaResponseDTO crearTarea(TareaRequestDTO request) {
         ProyectoAdaptadoResponse proyecto = proyectoServiceAdapter.obtenerProyectoAdaptado(request.getIdProyecto());
@@ -31,6 +33,8 @@ public class TareaService {
 
         Tarea tareaGuardada = tareaRepository.save(tarea);
 
+        sincronizarEstadoProyectoPorTarea(tareaGuardada);
+
         return convertirAResponse(tareaGuardada, proyecto.nombre());
     }
 
@@ -40,6 +44,7 @@ public class TareaService {
                 .map(this::convertirAResponseSinProyecto)
                 .toList();
     }
+
     public TareaResponseDTO buscarPorId(Long id) {
         Tarea tarea = obtenerTareaPorId(id);
         return convertirAResponseSinProyecto(tarea);
@@ -77,6 +82,8 @@ public class TareaService {
 
         Tarea tareaActualizada = tareaRepository.save(tarea);
 
+        sincronizarEstadoProyectoPorTarea(tareaActualizada);
+
         return convertirAResponse(tareaActualizada, proyecto.nombre());
     }
 
@@ -87,6 +94,8 @@ public class TareaService {
 
         tarea.setEstado(nuevoEstado);
         Tarea tareaActualizada = tareaRepository.save(tarea);
+
+        sincronizarEstadoProyectoPorTarea(tareaActualizada);
 
         return convertirAResponseSinProyecto(tareaActualizada);
     }
@@ -120,6 +129,43 @@ public class TareaService {
 
         if (estadoActual == EstadoTarea.PENDING && nuevoEstado == EstadoTarea.DONE) {
             throw new ReglaNegocioException("Una tarea pendiente debe pasar primero a IN_PROGRESS antes de finalizarse");
+        }
+    }
+
+    private void sincronizarEstadoProyectoPorTarea(Tarea tarea) {
+        if (tarea == null || tarea.getIdProyecto() == null || tarea.getEstado() == null) {
+            return;
+        }
+
+        try {
+            if (tarea.getEstado() == EstadoTarea.IN_PROGRESS) {
+                proyectoClient.cambiarEstadoProyecto(
+                        tarea.getIdProyecto(),
+                        new ProyectoClient.CambioEstadoProyectoRequest("IN_PROGRESS")
+                );
+                return;
+            }
+
+            if (tarea.getEstado() == EstadoTarea.DONE) {
+                boolean existenPendientes = tareaRepository.existsByIdProyectoAndEstadoNot(
+                        tarea.getIdProyecto(),
+                        EstadoTarea.DONE
+                );
+
+                if (!existenPendientes) {
+                    proyectoClient.cambiarEstadoProyecto(
+                            tarea.getIdProyecto(),
+                            new ProyectoClient.CambioEstadoProyectoRequest("COMPLETED")
+                    );
+                }
+            }
+        } catch (Exception exception) {
+            System.err.println(
+                    "No se pudo sincronizar el estado del proyecto "
+                            + tarea.getIdProyecto()
+                            + ": "
+                            + exception.getMessage()
+            );
         }
     }
 

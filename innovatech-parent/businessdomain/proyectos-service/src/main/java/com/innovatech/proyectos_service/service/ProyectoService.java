@@ -5,7 +5,6 @@ import com.innovatech.proyectos_service.dto.ProyectoResponseDTO;
 import com.innovatech.proyectos_service.exception.RecursoNoEncontradoException;
 import com.innovatech.proyectos_service.exception.ReglaNegocioException;
 import com.innovatech.proyectos_service.factory.ProyectoFactory;
-import com.innovatech.proyectos_service.facade.TareaServiceFacade;
 import com.innovatech.proyectos_service.model.EstadoProyecto;
 import com.innovatech.proyectos_service.model.Proyecto;
 import com.innovatech.proyectos_service.repository.ProyectoRepository;
@@ -19,7 +18,6 @@ import java.util.List;
 public class ProyectoService {
 
     private final ProyectoRepository proyectoRepository;
-    private final TareaServiceFacade tareaServiceFacade;
 
     public ProyectoResponseDTO crearProyecto(ProyectoRequestDTO request) {
         validarNombreDuplicado(request.getNombre());
@@ -97,17 +95,17 @@ public class ProyectoService {
     }
 
     private void validarCambioEstado(Proyecto proyecto, EstadoProyecto nuevoEstado) {
-        if (proyecto.getEstado() == EstadoProyecto.CANCELLED) {
-            throw new ReglaNegocioException("No se puede cambiar el estado de un proyecto cancelado");
+        if (nuevoEstado == null) {
+            throw new ReglaNegocioException("El estado del proyecto es obligatorio");
         }
 
-        if (nuevoEstado == EstadoProyecto.COMPLETED && existenTareasPendientes(proyecto.getId())) {
-            throw new ReglaNegocioException("No se puede finalizar el proyecto porque existen tareas pendientes");
-        }
-    }
-
-    private boolean existenTareasPendientes(Long idProyecto) {
-        return tareaServiceFacade.existenTareasPendientes(idProyecto);
+        /*
+         * El administrador puede cambiar manualmente el estado del proyecto.
+         * Por eso aquí NO bloqueamos COMPLETED aunque existan tareas pendientes.
+         *
+         * La actualización automática por tareas sigue funcionando desde tareas-service:
+         * cuando todas las tareas quedan DONE, el proyecto pasa a COMPLETED.
+         */
     }
 
     private ProyectoResponseDTO convertirAResponse(Proyecto proyecto) {
