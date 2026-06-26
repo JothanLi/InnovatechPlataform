@@ -4,9 +4,10 @@ import { authApi } from "../api/bffApi";
 
 function LoginPage({ autenticado, onLogin }) {
   const [credenciales, setCredenciales] = useState({
-    username: "manager",
-    password: "manager123",
+    username: "",
+    password: "",
   });
+
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -35,51 +36,43 @@ function LoginPage({ autenticado, onLogin }) {
   };
 
   return (
-    <main className="login-shell">
-      <section className="login-panel">
-        <h1>Innovatech</h1>
-        <p>Acceso a la plataforma de gestión de proyectos.</p>
+      <main className="login-shell">
+        <section className="login-panel">
+          <h1>Innovatech</h1>
+          <p>Acceso a la plataforma de gestión de proyectos.</p>
 
-        {error && <p className="error">{error}</p>}
+          {error && <p className="error">{error}</p>}
 
-        <form className="form-grid single" onSubmit={iniciarSesion}>
-          <label>
-            Usuario
-            <input
-              name="username"
-              value={credenciales.username}
-              onChange={actualizarCampo}
-              required
-            />
-          </label>
+          <form className="form-grid single" onSubmit={iniciarSesion}>
+            <label>
+              Usuario
+              <input
+                  name="username"
+                  value={credenciales.username}
+                  onChange={actualizarCampo}
+                  required
+                  autoComplete="username"
+              />
+            </label>
 
-          <label>
-            Contraseña
-            <input
-              type="password"
-              name="password"
-              value={credenciales.password}
-              onChange={actualizarCampo}
-              required
-            />
-          </label>
+            <label>
+              Contraseña
+              <input
+                  type="password"
+                  name="password"
+                  value={credenciales.password}
+                  onChange={actualizarCampo}
+                  required
+                  autoComplete="current-password"
+              />
+            </label>
 
-          <button className="button" type="submit" disabled={cargando}>
-            {cargando ? "Ingresando..." : "Ingresar"}
-          </button>
-        </form>
-
-        <div className="credentials-hint">
-          <strong>Usuarios demo</strong>
-          <span>project_manager / project_manager123</span>
-          <span>scrum_master / scrum_master123</span>
-          <span>developer / developer123</span>
-          <span>qa / qa123</span>
-          <span>devops / devops123</span>
-          <span>ui_ux / ui_ux123</span>
-        </div>
-      </section>
-    </main>
+            <button className="button" type="submit" disabled={cargando}>
+              {cargando ? "Ingresando..." : "Ingresar"}
+            </button>
+          </form>
+        </section>
+      </main>
   );
 }
 
