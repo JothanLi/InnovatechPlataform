@@ -32,6 +32,25 @@ function ProyectoDetallePage() {
     ].includes(rol)
   );
 
+  const puedeActualizarTareas = rolesSesion.some((rol) =>
+    [
+      "ADMIN",
+      "ROLE_ADMIN",
+      "PROJECT_MANAGER",
+      "ROLE_PROJECT_MANAGER",
+      "SCRUM_MASTER",
+      "ROLE_SCRUM_MASTER",
+      "DEVELOPER",
+      "ROLE_DEVELOPER",
+      "QA",
+      "ROLE_QA",
+      "DEVOPS",
+      "ROLE_DEVOPS",
+      "UI_UX",
+      "ROLE_UI_UX",
+    ].includes(rol)
+  );
+
   const [detalle, setDetalle] = useState(null);
   const [miembros, setMiembros] = useState([]);
   const [formTarea, setFormTarea] = useState(tareaInicial);
@@ -451,7 +470,7 @@ function ProyectoDetallePage() {
                         </div>
                       </div>
 
-                      {puedeGestionarProyecto && (
+                      {puedeActualizarTareas && (
                         <div className="inline-actions task-actions">
                           <button
                             type="button"
@@ -699,9 +718,13 @@ function formatearRol(rol) {
     SCRUM_MASTER: "Scrum Master",
     ROLE_SCRUM_MASTER: "Scrum Master",
     DEVELOPER: "Developer",
+    ROLE_DEVELOPER: "Developer",
     QA: "QA",
+    ROLE_QA: "QA",
     DEVOPS: "DevOps",
+    ROLE_DEVOPS: "DevOps",
     UI_UX: "UI/UX",
+    ROLE_UI_UX: "UI/UX",
   };
 
   return roles[rol] || rol || "Sin rol";

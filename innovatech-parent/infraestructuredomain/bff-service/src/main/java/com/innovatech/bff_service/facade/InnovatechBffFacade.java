@@ -111,8 +111,6 @@ public class InnovatechBffFacade {
     public TareaResponseDTO cambiarEstadoTarea(Long idTarea, String estado) {
         CurrentUser user = currentUserService.getCurrentUser();
 
-        requireProjectWorkManager(user);
-
         String estadoNormalizado = normalizarEstadoTarea(estado);
 
         TareaResponseDTO tarea = buscarTareaPorId(idTarea);
@@ -122,12 +120,14 @@ public class InnovatechBffFacade {
         }
 
         requireProyectoVisible(tarea.getIdProyecto(), user);
+        requirePuedeActualizarTarea(tarea, user);
 
         return tareaClient.cambiarEstadoTarea(
                 idTarea,
                 new TareaClient.CambioEstadoTareaRequest(estadoNormalizado)
         );
     }
+
 
     public List<MiembroEquipoResponse> listarMiembros() {
         CurrentUser user = currentUserService.getCurrentUser();
@@ -499,6 +499,21 @@ public class InnovatechBffFacade {
         if (!user.canManageProjectWork()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permisos para gestionar este proyecto");
         }
+    }
+
+    private void requirePuedeActualizarTarea(TareaResponseDTO tarea, CurrentUser user) {
+        if (user.canManageProjectWork()) {
+            return;
+        }
+
+        if (esResponsableDeTarea(tarea, user)) {
+            return;
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Solo el responsable o un gestor del proyecto puede actualizar esta tarea"
+        );
     }
 
     private TareaResponseDTO buscarTareaPorId(Long idTarea) {
