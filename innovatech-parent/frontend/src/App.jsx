@@ -19,24 +19,41 @@ function App() {
   const autenticado = useMemo(() => Boolean(sesion?.token), [sesion]);
   const esAdmin = sesion?.roles?.includes("ADMIN");
 
-  const iniciarSesion = (loginResponse) => {
-    localStorage.setItem("innovatech_token", loginResponse.accessToken);
-    localStorage.setItem("innovatech_username", loginResponse.username);
-    localStorage.setItem("innovatech_roles", JSON.stringify(loginResponse.roles));
+    const iniciarSesion = (loginResponse) => {
+        const token = loginResponse.accessToken || loginResponse.token;
+        const username = loginResponse.username;
+        const roles = loginResponse.roles || [];
 
-    setSesion({
-      token: loginResponse.accessToken,
-      username: loginResponse.username,
-      roles: loginResponse.roles,
-    });
-  };
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        localStorage.removeItem("tipoUsuario");
+        localStorage.removeItem("jwt");
+        localStorage.removeItem("accessToken");
 
-  const cerrarSesion = () => {
-    localStorage.removeItem("innovatech_token");
-    localStorage.removeItem("innovatech_username");
-    localStorage.removeItem("innovatech_roles");
-    setSesion(null);
-  };
+        localStorage.setItem("innovatech_token", token);
+        localStorage.setItem("innovatech_username", username);
+        localStorage.setItem("innovatech_roles", JSON.stringify(roles));
+
+        setSesion({
+            token,
+            username,
+            roles,
+        });
+    };
+
+    const cerrarSesion = () => {
+        localStorage.removeItem("innovatech_token");
+        localStorage.removeItem("innovatech_username");
+        localStorage.removeItem("innovatech_roles");
+
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        localStorage.removeItem("tipoUsuario");
+        localStorage.removeItem("jwt");
+        localStorage.removeItem("accessToken");
+
+        setSesion(null);
+    };
 
   return (
     <BrowserRouter>
