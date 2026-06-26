@@ -1,35 +1,49 @@
 import axios from "axios";
 
-const api = axios.create({
-  baseURL: "http://localhost:8090/api/v1",
+const API_BASE_URL =
+    import.meta.env.VITE_GATEWAY_API_URL ||
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:8090/api/v1";
+
+const bffApi = axios.create({
+    baseURL: `${API_BASE_URL}/bff`,
+    headers: {
+        "Content-Type": "application/json",
+    },
 });
 
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("accessToken");
+export const authApi = axios.create({
+    baseURL: `${API_BASE_URL}/auth`,
+    headers: {
+        "Content-Type": "application/json",
+    },
+});
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+bffApi.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem("innovatech_token");
 
-    return config;
-  },
-  (error) => Promise.reject(error)
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        return config;
+    },
+    (error) => Promise.reject(error)
 );
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("tokenType");
-      localStorage.removeItem("username");
-      localStorage.removeItem("roles");
-      window.location.href = "/login";
-    }
+authApi.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem("innovatech_token");
 
-    return Promise.reject(error);
-  }
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+
+        return config;
+    },
+    (error) => Promise.reject(error)
 );
 
-export default api;
+export { bffApi };
+export default bffApi;
