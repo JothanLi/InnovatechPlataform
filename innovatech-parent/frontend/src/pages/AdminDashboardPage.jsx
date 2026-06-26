@@ -791,8 +791,21 @@ function AdminDashboardPage() {
                                     </div>
                                   </div>
                                   <div className="inline-actions task-actions">
-                                    <button type="button" onClick={() => cambiarEstadoTarea(tarea.id, "IN_PROGRESS")} disabled={tarea.estado !== "PENDING"}>Iniciar</button>
-                                    <button type="button" onClick={() => cambiarEstadoTarea(tarea.id, "DONE")} disabled={tarea.estado === "DONE"}>Finalizar</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => cambiarEstadoTarea(tarea.id, "IN_PROGRESS")}
+                                        disabled={tarea.estado !== "PENDING"}
+                                    >
+                                      Iniciar
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => cambiarEstadoTarea(tarea.id, "DONE")}
+                                        disabled={tarea.estado !== "IN_PROGRESS"}
+                                    >
+                                      Finalizar
+                                    </button>
                                   </div>
                                 </article>
                               ))}
@@ -1191,12 +1204,43 @@ function formatearRol(rol) {
   return roles[rol] || rol || "Sin rol";
 }
 
-function formatearFecha(fecha) {
+function convertirFecha(fecha) {
   if (!fecha) {
+    return null;
+  }
+
+  if (Array.isArray(fecha)) {
+    const [year, month, day] = fecha;
+    return new Date(year, month - 1, day);
+  }
+
+  if (typeof fecha === "object") {
+    const year = fecha.year ?? fecha.anio;
+    const month = fecha.month ?? fecha.mes;
+    const day = fecha.day ?? fecha.dia;
+
+    if (!year || !month || !day) {
+      return null;
+    }
+
+    return new Date(year, month - 1, day);
+  }
+
+  if (typeof fecha === "string") {
+    return new Date(`${fecha}T00:00:00`);
+  }
+
+  return null;
+}
+
+function formatearFecha(fecha) {
+  const date = convertirFecha(fecha);
+
+  if (!date || Number.isNaN(date.getTime())) {
     return "Sin fecha";
   }
 
-  return new Date(`${fecha}T00:00:00`).toLocaleDateString("es-CL");
+  return date.toLocaleDateString("es-CL");
 }
 
 function formatearPorcentaje(valor) {
@@ -1215,21 +1259,28 @@ function fechasProyectoValidas(formProyecto) {
   return formProyecto.fechaFinEstimada >= formProyecto.fechaInicio;
 }
 
-function obtenerIndicadorFecha(proyecto) {
-  if (!proyecto.fechaFinEstimada) {
+function obtenerIndicadorFecha(item) {
+  if (!item.fechaFinEstimada) {
     return "Sin fecha límite";
   }
 
-  if (proyecto.estado === "COMPLETED") {
+  if (item.estado === "COMPLETED" || item.estado === "DONE") {
     return "Finalizado";
   }
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  const fechaFin = new Date(`${proyecto.fechaFinEstimada}T00:00:00`);
 
-  if (fechaFin < hoy && proyecto.estado !== "COMPLETED") {
-    return "Vencido";
+  const fechaFin = convertirFecha(item.fechaFinEstimada);
+
+  if (!fechaFin || Number.isNaN(fechaFin.getTime())) {
+    return "Sin fecha límite";
+  }
+
+  fechaFin.setHours(0, 0, 0, 0);
+
+  if (fechaFin < hoy) {
+    return "Atrasado";
   }
 
   const diferenciaDias = Math.ceil((fechaFin - hoy) / (1000 * 60 * 60 * 24));

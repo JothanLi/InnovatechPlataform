@@ -25,15 +25,25 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
+                        // Lectura pública para que BFF/Gateway puedan armar dashboard y consultas
                         .requestMatchers(HttpMethod.GET, "/api/v1/tareas/**").permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/tareas/**")
                         .hasAnyRole("ADMIN", "PROJECT_MANAGER", "SCRUM_MASTER")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/tareas/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/tareas/*/estado").authenticated()
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/tareas/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/tareas/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/tareas/**")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/tareas/{id}/estado")
+                        .authenticated()
+
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/tareas/**")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/tareas/**")
+                        .hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )

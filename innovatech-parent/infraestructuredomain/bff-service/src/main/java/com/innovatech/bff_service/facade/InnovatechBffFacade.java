@@ -85,18 +85,6 @@ public class InnovatechBffFacade {
     }
 
     public TareaResponseDTO cambiarEstadoTarea(Long idTarea, String estado) {
-        CurrentUser user = currentUserService.getCurrentUser();
-        TareaResponseDTO tarea = buscarTareaPorId(idTarea);
-
-        if (user.canManageProjectWork()) {
-            requireProyectoVisible(tarea.getIdProyecto(), user);
-        } else if (!esResponsableDeTarea(tarea, user)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Solo puedes cambiar el estado de tareas asignadas a ti"
-            );
-        }
-
         return tareaClient.cambiarEstadoTarea(
                 idTarea,
                 new TareaClient.CambioEstadoTareaRequest(estado)
@@ -319,12 +307,7 @@ public class InnovatechBffFacade {
     }
 
     private TareaResponseDTO buscarTareaPorId(Long idTarea) {
-        return proyectoClient.listarProyectos()
-                .stream()
-                .flatMap(proyecto -> tareaClient.listarTareasPorProyecto(proyecto.getId()).stream())
-                .filter(tarea -> idTarea.equals(tarea.getId()))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tarea no encontrada"));
+        return tareaClient.obtenerTareaPorId(idTarea);
     }
 
     private boolean esResponsableDeTarea(TareaResponseDTO tarea, CurrentUser user) {

@@ -3,11 +3,7 @@ package com.innovatech.bff_service.client;
 import com.innovatech.bff_service.dto.TareaRequestDTO;
 import com.innovatech.bff_service.dto.TareaResponseDTO;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -16,6 +12,9 @@ import java.util.List;
         url = "${innovatech.services.tareas}"
 )
 public interface TareaClient {
+
+    @GetMapping("/api/v1/tareas/{id}")
+    TareaResponseDTO obtenerTareaPorId(@PathVariable("id") Long id);
 
     @GetMapping("/api/v1/tareas/proyecto/{idProyecto}")
     List<TareaResponseDTO> listarTareasPorProyecto(@PathVariable("idProyecto") Long idProyecto);

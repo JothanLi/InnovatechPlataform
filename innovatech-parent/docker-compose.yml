@@ -184,12 +184,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_GATEWAY_API_URL: http://localhost:8090/api/v1
     container_name: innovatech-frontend
-    restart: always
     ports:
-      - "5173:5173"
-    environment:
-      VITE_GATEWAY_API_URL: "http://localhost:8090/api/v1"
+      - "5173:80"
     depends_on:
       - api-gateway
     networks:

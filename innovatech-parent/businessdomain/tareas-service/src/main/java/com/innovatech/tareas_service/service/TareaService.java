@@ -40,10 +40,9 @@ public class TareaService {
                 .map(this::convertirAResponseSinProyecto)
                 .toList();
     }
-
     public TareaResponseDTO buscarPorId(Long id) {
         Tarea tarea = obtenerTareaPorId(id);
-        return convertirAResponseConProyecto(tarea);
+        return convertirAResponseSinProyecto(tarea);
     }
 
     public List<TareaResponseDTO> buscarPorProyecto(Long idProyecto) {
@@ -89,7 +88,7 @@ public class TareaService {
         tarea.setEstado(nuevoEstado);
         Tarea tareaActualizada = tareaRepository.save(tarea);
 
-        return convertirAResponseConProyecto(tareaActualizada);
+        return convertirAResponseSinProyecto(tareaActualizada);
     }
 
     public void eliminarTarea(Long id) {
