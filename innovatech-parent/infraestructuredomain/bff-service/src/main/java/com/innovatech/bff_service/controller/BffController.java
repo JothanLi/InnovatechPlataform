@@ -89,6 +89,12 @@ public class BffController {
         return bffFacade.cambiarEstadoTarea(idTarea, request.estado());
     }
 
+    @DeleteMapping("/tareas/{idTarea}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminarTarea(@PathVariable Long idTarea) {
+        bffFacade.eliminarTarea(idTarea);
+    }
+
     @GetMapping("/miembros")
     public List<MiembroEquipoResponse> listarMiembros() {
         return bffFacade.listarMiembros();

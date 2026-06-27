@@ -104,6 +104,8 @@ public class InnovatechBffFacade {
 
         requireProjectWorkManager(user);
         requireProyectoVisible(request.idProyecto(), user);
+        validarProyectoPermiteNuevasTareas(request.idProyecto());
+        validarResponsablePerteneceAlProyecto(request);
 
         return tareaClient.crearTarea(request);
     }
@@ -126,6 +128,22 @@ public class InnovatechBffFacade {
                 idTarea,
                 new TareaClient.CambioEstadoTareaRequest(estadoNormalizado)
         );
+    }
+
+    public void eliminarTarea(Long idTarea) {
+        CurrentUser user = currentUserService.getCurrentUser();
+
+        requireAdmin();
+
+        TareaResponseDTO tarea = buscarTareaPorId(idTarea);
+
+        if (tarea == null || tarea.getIdProyecto() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró la tarea solicitada");
+        }
+
+        requireProyectoVisible(tarea.getIdProyecto(), user);
+
+        tareaClient.eliminarTarea(idTarea);
     }
 
 
@@ -324,6 +342,62 @@ public class InnovatechBffFacade {
                 .map(AsignacionProyectoResponse::getIdProyecto)
                 .filter(idProyecto -> idProyecto != null)
                 .collect(Collectors.toSet());
+    }
+
+
+    private void validarProyectoPermiteNuevasTareas(Long idProyecto) {
+        if (idProyecto == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id del proyecto es obligatorio");
+        }
+
+        ProyectoResponseDTO proyecto = proyectoClient.obtenerProyectoPorId(idProyecto);
+
+        if (proyecto == null || proyecto.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontró el proyecto solicitado");
+        }
+
+        String estado = proyecto.getEstado() == null ? "" : proyecto.getEstado().trim().toUpperCase();
+
+        if (Set.of("COMPLETED", "CANCELLED").contains(estado)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "No se pueden asignar nuevas tareas a un proyecto finalizado o cancelado"
+            );
+        }
+    }
+
+    private void validarResponsablePerteneceAlProyecto(TareaRequestDTO request) {
+        if (request == null || request.idProyecto() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id del proyecto es obligatorio");
+        }
+
+        if (request.responsable() == null || request.responsable().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El responsable de la tarea es obligatorio");
+        }
+
+        List<AsignacionProyectoResponse> asignaciones = equipoClient.listarMiembrosPorProyecto(request.idProyecto());
+
+        if (asignaciones == null || asignaciones.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El proyecto no tiene miembros asignados. Asigna un miembro antes de crear tareas"
+            );
+        }
+
+        String responsableNormalizado = request.responsable().trim();
+
+        boolean responsableAsignado = asignaciones.stream()
+                .filter(asignacion -> asignacion != null)
+                .map(AsignacionProyectoResponse::getNombreMiembro)
+                .filter(nombre -> nombre != null && !nombre.isBlank())
+                .anyMatch(nombre -> nombre.trim().equalsIgnoreCase(responsableNormalizado));
+
+        if (!responsableAsignado) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El responsable seleccionado no pertenece al equipo asignado al proyecto"
+            );
+        }
     }
 
     private List<TareaResponseDTO> obtenerTareasSegurasPorProyecto(Long idProyecto) {

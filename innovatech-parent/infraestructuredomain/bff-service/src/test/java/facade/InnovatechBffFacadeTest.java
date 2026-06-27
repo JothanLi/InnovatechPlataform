@@ -17,6 +17,8 @@ import com.innovatech.bff_service.facade.InnovatechBffFacade;
 import com.innovatech.bff_service.security.CurrentUserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -156,15 +158,8 @@ class InnovatechBffFacadeTest {
     }
 
     @Test
-    void crearTarea_deberiaDelegarEnTareaClient() {
-        TareaRequestDTO request = new TareaRequestDTO(
-                "Configurar BFF",
-                "PENDING",
-                1L,
-                "Jonathan",
-                null,
-                null
-        );
+    void crearTarea_deberiaCrearCuandoProyectoEstaActivoYResponsablePerteneceAlEquipo() {
+        TareaRequestDTO request = nuevaTareaRequest("Jonathan");
 
         TareaResponseDTO esperado = TareaResponseDTO.builder()
                 .id(8L)
@@ -174,13 +169,92 @@ class InnovatechBffFacadeTest {
                 .responsable(request.responsable())
                 .build();
 
+        when(proyectoClient.obtenerProyectoPorId(1L)).thenReturn(proyecto(1L, "IN_PROGRESS"));
+        when(equipoClient.listarMiembrosPorProyecto(1L)).thenReturn(List.of(asignacion(1L, 20L, "Jonathan")));
         when(tareaClient.crearTarea(request)).thenReturn(esperado);
 
         TareaResponseDTO response = facade.crearTarea(request);
 
         assertEquals(8L, response.getId());
         assertEquals("Configurar BFF", response.getDescripcion());
+        assertEquals("Jonathan", response.getResponsable());
+        verify(proyectoClient).obtenerProyectoPorId(1L);
+        verify(equipoClient).listarMiembrosPorProyecto(1L);
         verify(tareaClient).crearTarea(request);
+    }
+
+    @Test
+    void crearTarea_deberiaLanzarBadRequestCuandoProyectoEstaFinalizado() {
+        TareaRequestDTO request = nuevaTareaRequest("Jonathan");
+
+        when(proyectoClient.obtenerProyectoPorId(1L)).thenReturn(proyecto(1L, "COMPLETED"));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> facade.crearTarea(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("finalizado o cancelado"));
+        verify(proyectoClient).obtenerProyectoPorId(1L);
+        verify(equipoClient, never()).listarMiembrosPorProyecto(anyLong());
+        verify(tareaClient, never()).crearTarea(any(TareaRequestDTO.class));
+    }
+
+    @Test
+    void crearTarea_deberiaLanzarBadRequestCuandoProyectoEstaCancelado() {
+        TareaRequestDTO request = nuevaTareaRequest("Jonathan");
+
+        when(proyectoClient.obtenerProyectoPorId(1L)).thenReturn(proyecto(1L, "CANCELLED"));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> facade.crearTarea(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("finalizado o cancelado"));
+        verify(proyectoClient).obtenerProyectoPorId(1L);
+        verify(equipoClient, never()).listarMiembrosPorProyecto(anyLong());
+        verify(tareaClient, never()).crearTarea(any(TareaRequestDTO.class));
+    }
+
+    @Test
+    void crearTarea_deberiaLanzarBadRequestCuandoResponsableNoPerteneceAlProyecto() {
+        TareaRequestDTO request = nuevaTareaRequest("Persona Externa");
+
+        when(proyectoClient.obtenerProyectoPorId(1L)).thenReturn(proyecto(1L, "IN_PROGRESS"));
+        when(equipoClient.listarMiembrosPorProyecto(1L)).thenReturn(List.of(asignacion(1L, 20L, "Jonathan")));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> facade.crearTarea(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("no pertenece al equipo"));
+        verify(proyectoClient).obtenerProyectoPorId(1L);
+        verify(equipoClient).listarMiembrosPorProyecto(1L);
+        verify(tareaClient, never()).crearTarea(any(TareaRequestDTO.class));
+    }
+
+    @Test
+    void crearTarea_deberiaLanzarBadRequestCuandoProyectoNoTieneMiembrosAsignados() {
+        TareaRequestDTO request = nuevaTareaRequest("Jonathan");
+
+        when(proyectoClient.obtenerProyectoPorId(1L)).thenReturn(proyecto(1L, "IN_PROGRESS"));
+        when(equipoClient.listarMiembrosPorProyecto(1L)).thenReturn(List.of());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> facade.crearTarea(request)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("no tiene miembros asignados"));
+        verify(proyectoClient).obtenerProyectoPorId(1L);
+        verify(equipoClient).listarMiembrosPorProyecto(1L);
+        verify(tareaClient, never()).crearTarea(any(TareaRequestDTO.class));
     }
 
     @Test
@@ -191,22 +265,14 @@ class InnovatechBffFacadeTest {
                 .idProyecto(1L)
                 .build();
 
-        ProyectoResponseDTO proyecto = ProyectoResponseDTO.builder()
-                .id(1L)
-                .nombre("Plataforma Innovatech")
+        TareaResponseDTO tareaActual = TareaResponseDTO.builder()
+                .id(8L)
                 .estado("IN_PROGRESS")
+                .idProyecto(1L)
+                .responsable("Admin Innovatech")
                 .build();
 
-        when(proyectoClient.listarProyectos()).thenReturn(List.of(proyecto));
-        when(tareaClient.listarTareasPorProyecto(1L)).thenReturn(List.of(
-                TareaResponseDTO.builder()
-                        .id(8L)
-                        .estado("IN_PROGRESS")
-                        .idProyecto(1L)
-                        .responsable("Admin Innovatech")
-                        .build()
-        ));
-
+        when(tareaClient.obtenerTareaPorId(8L)).thenReturn(tareaActual);
         when(tareaClient.cambiarEstadoTarea(eq(8L), any(TareaClient.CambioEstadoTareaRequest.class)))
                 .thenReturn(esperado);
 
@@ -214,6 +280,47 @@ class InnovatechBffFacadeTest {
 
         assertEquals("DONE", response.getEstado());
         verify(tareaClient).cambiarEstadoTarea(eq(8L), any(TareaClient.CambioEstadoTareaRequest.class));
+    }
+
+
+    @Test
+    void eliminarTarea_deberiaDelegarEnTareaClientCuandoUsuarioEsAdminYTareaExiste() {
+        TareaResponseDTO tarea = TareaResponseDTO.builder()
+                .id(8L)
+                .descripcion("Configurar BFF")
+                .estado("PENDING")
+                .idProyecto(1L)
+                .responsable("Jonathan")
+                .build();
+
+        when(tareaClient.obtenerTareaPorId(8L)).thenReturn(tarea);
+        doNothing().when(tareaClient).eliminarTarea(8L);
+
+        facade.eliminarTarea(8L);
+
+        verify(tareaClient).obtenerTareaPorId(8L);
+        verify(tareaClient).eliminarTarea(8L);
+    }
+
+    @Test
+    void eliminarTarea_deberiaLanzarForbiddenCuandoUsuarioNoEsAdmin() {
+        when(currentUserService.getCurrentUser()).thenReturn(
+                new CurrentUserService.CurrentUser(
+                        2L,
+                        "pm@innovatech.cl",
+                        "PROJECT_MANAGER",
+                        "Project Manager"
+                )
+        );
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> facade.eliminarTarea(8L)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        verify(tareaClient, never()).obtenerTareaPorId(anyLong());
+        verify(tareaClient, never()).eliminarTarea(anyLong());
     }
 
     @Test
@@ -265,5 +372,36 @@ class InnovatechBffFacadeTest {
         assertEquals(5L, response.getId());
         assertEquals(3L, response.getIdMiembro());
         verify(equipoClient).asignarMiembroAProyecto(request);
+    }
+
+
+    private TareaRequestDTO nuevaTareaRequest(String responsable) {
+        return new TareaRequestDTO(
+                "Configurar BFF",
+                "PENDING",
+                1L,
+                responsable,
+                null,
+                null
+        );
+    }
+
+    private ProyectoResponseDTO proyecto(Long idProyecto, String estado) {
+        return ProyectoResponseDTO.builder()
+                .id(idProyecto)
+                .nombre("Plataforma Innovatech")
+                .descripcion("Sistema de gestión de proyectos")
+                .estado(estado)
+                .build();
+    }
+
+    private AsignacionProyectoResponse asignacion(Long idProyecto, Long idMiembro, String nombreMiembro) {
+        return AsignacionProyectoResponse.builder()
+                .id(100L)
+                .idProyecto(idProyecto)
+                .idMiembro(idMiembro)
+                .nombreMiembro(nombreMiembro)
+                .rolMiembro("DEVELOPER")
+                .build();
     }
 }

@@ -28,6 +28,9 @@ public interface TareaClient {
             @RequestBody CambioEstadoTareaRequest request
     );
 
+    @DeleteMapping("/api/v1/tareas/{id}")
+    void eliminarTarea(@PathVariable("id") Long id);
+
     record CambioEstadoTareaRequest(String estado) {
     }
 }
