@@ -21,6 +21,12 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 class ProyectoServiceTest {
 
@@ -245,49 +251,79 @@ class ProyectoServiceTest {
     }
 
     @Test
-    void cambiarEstado_deberiaLanzarExcepcionSiExistenTareasPendientes() {
-        Proyecto proyecto = Proyecto.builder()
-                .id(1L)
-                .nombre("Proyecto")
-                .descripcion("Descripción")
+    void cambiarEstado_deberiaPermitirFinalizarAunqueExistanTareasPendientes() {
+        // Arrange
+        Long idProyecto = 1L;
+
+        Proyecto proyectoExistente = Proyecto.builder()
+                .id(idProyecto)
+                .nombre("Proyecto Innovatech")
+                .descripcion("Proyecto de prueba")
                 .estado(EstadoProyecto.IN_PROGRESS)
+                .fechaInicio(LocalDate.of(2026, 1, 1))
+                .fechaFinEstimada(LocalDate.of(2026, 12, 31))
                 .build();
 
-        when(proyectoRepository.findById(1L)).thenReturn(Optional.of(proyecto));
-        when(tareaServiceFacade.existenTareasPendientes(1L)).thenReturn(true);
+        Proyecto proyectoActualizado = Proyecto.builder()
+                .id(idProyecto)
+                .nombre("Proyecto Innovatech")
+                .descripcion("Proyecto de prueba")
+                .estado(EstadoProyecto.COMPLETED)
+                .fechaInicio(LocalDate.of(2026, 1, 1))
+                .fechaFinEstimada(LocalDate.of(2026, 12, 31))
+                .build();
 
-        ReglaNegocioException exception = assertThrows(
-                ReglaNegocioException.class,
-                () -> proyectoService.cambiarEstado(1L, EstadoProyecto.COMPLETED)
-        );
+        when(proyectoRepository.findById(idProyecto)).thenReturn(Optional.of(proyectoExistente));
+        when(proyectoRepository.save(any(Proyecto.class))).thenReturn(proyectoActualizado);
 
-        assertEquals("No se puede finalizar el proyecto porque existen tareas pendientes", exception.getMessage());
+        // Act
+        ProyectoResponseDTO resultado = proyectoService.cambiarEstado(idProyecto, EstadoProyecto.COMPLETED);
 
-        verify(proyectoRepository).findById(1L);
-        verify(tareaServiceFacade).existenTareasPendientes(1L);
-        verify(proyectoRepository, never()).save(any(Proyecto.class));
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(idProyecto, resultado.getId());
+        assertEquals(EstadoProyecto.COMPLETED, resultado.getEstado());
+
+        verify(proyectoRepository).findById(idProyecto);
+        verify(proyectoRepository).save(any(Proyecto.class));
     }
 
     @Test
-    void cambiarEstado_deberiaLanzarExcepcionSiProyectoEstaCancelado() {
-        Proyecto proyecto = Proyecto.builder()
-                .id(1L)
+    void cambiarEstado_deberiaPermitirCambiarEstadoDesdeCancelado() {
+        // Arrange
+        Long idProyecto = 1L;
+
+        Proyecto proyectoExistente = Proyecto.builder()
+                .id(idProyecto)
                 .nombre("Proyecto Cancelado")
-                .descripcion("Descripción")
+                .descripcion("Proyecto de prueba")
                 .estado(EstadoProyecto.CANCELLED)
+                .fechaInicio(LocalDate.of(2026, 1, 1))
+                .fechaFinEstimada(LocalDate.of(2026, 12, 31))
                 .build();
 
-        when(proyectoRepository.findById(1L)).thenReturn(Optional.of(proyecto));
+        Proyecto proyectoActualizado = Proyecto.builder()
+                .id(idProyecto)
+                .nombre("Proyecto Cancelado")
+                .descripcion("Proyecto de prueba")
+                .estado(EstadoProyecto.IN_PROGRESS)
+                .fechaInicio(LocalDate.of(2026, 1, 1))
+                .fechaFinEstimada(LocalDate.of(2026, 12, 31))
+                .build();
 
-        ReglaNegocioException exception = assertThrows(
-                ReglaNegocioException.class,
-                () -> proyectoService.cambiarEstado(1L, EstadoProyecto.IN_PROGRESS)
-        );
+        when(proyectoRepository.findById(idProyecto)).thenReturn(Optional.of(proyectoExistente));
+        when(proyectoRepository.save(any(Proyecto.class))).thenReturn(proyectoActualizado);
 
-        assertEquals("No se puede cambiar el estado de un proyecto cancelado", exception.getMessage());
+        // Act
+        ProyectoResponseDTO resultado = proyectoService.cambiarEstado(idProyecto, EstadoProyecto.IN_PROGRESS);
 
-        verify(proyectoRepository).findById(1L);
-        verify(proyectoRepository, never()).save(any(Proyecto.class));
+        // Assert
+        assertNotNull(resultado);
+        assertEquals(idProyecto, resultado.getId());
+        assertEquals(EstadoProyecto.IN_PROGRESS, resultado.getEstado());
+
+        verify(proyectoRepository).findById(idProyecto);
+        verify(proyectoRepository).save(any(Proyecto.class));
     }
 
     @Test
@@ -306,4 +342,5 @@ class ProyectoServiceTest {
         verify(proyectoRepository).findById(1L);
         verify(proyectoRepository).delete(proyecto);
     }
+
 }

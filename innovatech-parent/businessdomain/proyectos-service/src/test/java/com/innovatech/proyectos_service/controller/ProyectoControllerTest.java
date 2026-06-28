@@ -1,5 +1,8 @@
 package com.innovatech.proyectos_service.controller;
 
+import com.innovatech.proyectos_service.security.JwtAuthenticationFilter;
+import com.innovatech.proyectos_service.security.JwtUtil;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.innovatech.proyectos_service.dto.CambioEstadoProyectoDTO;
 import com.innovatech.proyectos_service.dto.ProyectoRequestDTO;
@@ -10,9 +13,9 @@ import com.innovatech.proyectos_service.model.EstadoProyecto;
 import com.innovatech.proyectos_service.service.ProyectoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -32,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProyectoController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ProyectoControllerTest {
 
     @Autowired
@@ -39,6 +43,12 @@ class ProyectoControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockitoBean
     private ProyectoService proyectoService;
@@ -156,7 +166,8 @@ class ProyectoControllerTest {
 
         when(proyectoService.buscarPorEstado(EstadoProyecto.PLANNED)).thenReturn(List.of(response));
 
-        mockMvc.perform(get("/api/v1/proyectos/estado/PLANNED"))
+        mockMvc.perform(get("/api/v1/proyectos")
+                        .param("estado", "PLANNED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].estado").value("PLANNED"));

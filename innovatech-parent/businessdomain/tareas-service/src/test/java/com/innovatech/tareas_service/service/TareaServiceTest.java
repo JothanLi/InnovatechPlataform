@@ -1,5 +1,6 @@
 package com.innovatech.tareas_service.service;
 
+import com.innovatech.tareas_service.client.ProyectoClient;
 import com.innovatech.tareas_service.adapter.ProyectoServiceAdapter;
 import com.innovatech.tareas_service.dto.ProyectoAdaptadoResponse;
 import com.innovatech.tareas_service.dto.TareaRequestDTO;
@@ -31,6 +32,9 @@ class TareaServiceTest {
 
     @Mock
     private ProyectoServiceAdapter proyectoServiceAdapter;
+
+    @Mock
+    private ProyectoClient proyectoClient;
 
     @InjectMocks
     private TareaService tareaService;
@@ -121,17 +125,19 @@ class TareaServiceTest {
     @Test
     void buscarPorId_deberiaRetornarTareaCuandoExiste() {
         when(tareaRepository.findById(1L)).thenReturn(Optional.of(tarea));
-        when(proyectoServiceAdapter.obtenerProyectoAdaptado(10L)).thenReturn(proyecto);
 
         TareaResponseDTO response = tareaService.buscarPorId(1L);
 
         assertNotNull(response);
         assertEquals(1L, response.getId());
         assertEquals("Implementar CRUD de tareas", response.getDescripcion());
-        assertEquals("Plataforma Innovatech", response.getNombreProyecto());
+        assertEquals(EstadoTarea.PENDING, response.getEstado());
+        assertEquals(10L, response.getIdProyecto());
+        assertEquals("Sebastian", response.getResponsable());
+        assertNull(response.getNombreProyecto());
 
         verify(tareaRepository, times(1)).findById(1L);
-        verify(proyectoServiceAdapter, times(1)).obtenerProyectoAdaptado(10L);
+        verify(proyectoServiceAdapter, never()).obtenerProyectoAdaptado(anyLong());
     }
 
     @Test
@@ -229,16 +235,24 @@ class TareaServiceTest {
 
         when(tareaRepository.findById(1L)).thenReturn(Optional.of(tarea));
         when(tareaRepository.save(any(Tarea.class))).thenReturn(tareaActualizada);
-        when(proyectoServiceAdapter.obtenerProyectoAdaptado(10L)).thenReturn(proyecto);
 
         TareaResponseDTO response = tareaService.cambiarEstado(1L, EstadoTarea.IN_PROGRESS);
 
         assertNotNull(response);
+        assertEquals(1L, response.getId());
         assertEquals(EstadoTarea.IN_PROGRESS, response.getEstado());
+        assertEquals(10L, response.getIdProyecto());
+        assertEquals("Sebastian", response.getResponsable());
+        assertNull(response.getNombreProyecto());
 
         verify(tareaRepository, times(1)).findById(1L);
         verify(tareaRepository, times(1)).save(any(Tarea.class));
-        verify(proyectoServiceAdapter, times(1)).obtenerProyectoAdaptado(10L);
+        verify(proyectoServiceAdapter, never()).obtenerProyectoAdaptado(anyLong());
+
+        verify(proyectoClient, times(1)).cambiarEstadoProyecto(
+                eq(10L),
+                any(ProyectoClient.CambioEstadoProyectoRequest.class)
+        );
     }
 
     @Test
