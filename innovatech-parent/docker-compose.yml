@@ -1,0 +1,202 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: innovatech-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_DATABASE: "innovatech_proyectos"
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - innovatech-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring
+      args:
+        MODULE_PATH: infraestructuredomain/eureka-server
+    container_name: innovatech-eureka-server
+    restart: always
+    ports:
+      - "8761:8761"
+    networks:
+      - innovatech-network
+
+  spring-boot-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring
+      args:
+        MODULE_PATH: infraestructuredomain/spring-boot-admin
+    container_name: innovatech-spring-boot-admin
+    restart: always
+    ports:
+      - "9090:9090"
+    environment:
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+    depends_on:
+      - eureka-server
+    networks:
+      - innovatech-network
+
+  proyectos-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring
+      args:
+        MODULE_PATH: businessdomain/proyectos-service
+    container_name: innovatech-proyectos-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      DB_URL: "jdbc:mysql://innovatech-mysql:3306/innovatech_proyectos?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
+      DB_USERNAME: "root"
+      DB_PASSWORD: "root"
+      TAREAS_SERVICE_URL: "http://tareas-service:8084"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - innovatech-network
+
+  equipos-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring
+      args:
+        MODULE_PATH: businessdomain/equipos-service
+    container_name: innovatech-equipos-service
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      DB_URL: "jdbc:mysql://innovatech-mysql:3306/innovatech_equipos?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
+      DB_USERNAME: "root"
+      DB_PASSWORD: "root"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - innovatech-network
+
+  tareas-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring
+      args:
+        MODULE_PATH: businessdomain/tareas-service
+    container_name: innovatech-tareas-service
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      DB_URL: "jdbc:mysql://innovatech-mysql:3306/innovatech_tareas?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC"
+      DB_USERNAME: "root"
+      DB_PASSWORD: "root"
+      PROYECTOS_SERVICE_URL: "http://proyectos-service:8081"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      proyectos-service:
+        condition: service_started
+    networks:
+      - innovatech-network
+
+  bff-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring
+      args:
+        MODULE_PATH: infraestructuredomain/bff-service
+    container_name: innovatech-bff-service
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      PROYECTOS_SERVICE_URL: "http://proyectos-service:8081"
+      TAREAS_SERVICE_URL: "http://tareas-service:8084"
+      EQUIPOS_SERVICE_URL: "http://equipos-service:8083"
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+    depends_on:
+      - eureka-server
+      - proyectos-service
+      - tareas-service
+      - equipos-service
+    networks:
+      - innovatech-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring
+      args:
+        MODULE_PATH: infraestructuredomain/api-gateway
+    container_name: innovatech-api-gateway
+    restart: always
+    ports:
+      - "8090:8090"
+    environment:
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      PROYECTOS_SERVICE_URL: "http://proyectos-service:8081"
+      TAREAS_SERVICE_URL: "http://tareas-service:8084"
+      EQUIPOS_SERVICE_URL: "http://equipos-service:8083"
+      BFF_SERVICE_URL: "http://bff-service:8085"
+
+      JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+      INNOVATECH_SECURITY_JWT_SECRET: "innovatech_super_secret_key_2026_para_jwt_seguro_123456789"
+      INNOVATECH_SECURITY_JWT_EXPIRATION_MS: "86400000"
+      INNOVATECH_SECURITY_JWT_EXPIRATION_MINUTES: "1440"
+      INNOVATECH_SECURITY_CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
+    depends_on:
+      - eureka-server
+      - proyectos-service
+      - tareas-service
+      - equipos-service
+      - bff-service
+    networks:
+      - innovatech-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_GATEWAY_API_URL: http://localhost:8090/api/v1
+    container_name: innovatech-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - innovatech-network
+
+volumes:
+  mysql_data:
+
+networks:
+  innovatech-network:
+    driver: bridge

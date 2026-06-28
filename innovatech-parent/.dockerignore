@@ -1,0 +1,15 @@
+**/target
+**/.idea
+**/.git
+**/.mvn/wrapper/maven-wrapper.jar
+
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+
+node_modules
+dist
+dist-ssr
+
+.git
+.idea

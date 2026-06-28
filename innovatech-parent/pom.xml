@@ -27,6 +27,7 @@
   <properties>
     <java.version>17</java.version>
     <spring-cloud.version>2025.1.1</spring-cloud.version>
+    <springdoc-openapi.version>3.0.0</springdoc-openapi.version>
     <bouncycastle.version>1.84</bouncycastle.version>
     <commons-fileupload.version>1.6.0</commons-fileupload.version>
     <httpclient.version>4.5.14</httpclient.version>
@@ -42,6 +43,12 @@
         <version>${spring-cloud.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc-openapi.version}</version>
       </dependency>
 
       <dependency>
@@ -99,6 +106,30 @@
         </plugin>
       </plugins>
     </pluginManagement>
+
+    <plugins>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.13</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 
 </project>

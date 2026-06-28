@@ -21,6 +21,7 @@
         <module>eureka-server</module>
         <module>api-gateway</module>
         <module>bff-service</module>
+        <module>spring-boot-admin</module>
     </modules>
 
 </project>
